@@ -1,0 +1,37 @@
+name: http_request
+description: "Make an HTTP GET or POST request to an allowed domain. Returns status code, headers, and body."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [http_request]
+input_schema:
+  type: object
+  properties:
+    method:
+      type: string
+      enum: [GET, POST, PUT, PATCH, DELETE]
+      default: GET
+    url:
+      type: string
+      description: "Full URL including protocol"
+    headers:
+      type: object
+      description: "Optional request headers"
+    body:
+      type: string
+      description: "Request body for POST/PUT"
+    timeout:
+      type: number
+      default: 15
+  required: [url]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    status_code: {type: integer}
+    headers: {type: object}
+    body: {type: string}
+timeout: 20.0
+retry:
+  max_attempts: 2
+  backoff_base: 1.5
+  backoff_max: 10.0

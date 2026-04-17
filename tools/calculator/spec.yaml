@@ -1,0 +1,21 @@
+name: calculator
+description: "Evaluate a mathematical expression deterministically. Uses Python's math library. No LLM involved."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    expression:
+      type: string
+      description: "A mathematical expression to evaluate, e.g. '2 ** 10 + sqrt(144)'"
+  required: [expression]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    result: {}
+    expression: {type: string}
+timeout: 5.0
+retry:
+  max_attempts: 1

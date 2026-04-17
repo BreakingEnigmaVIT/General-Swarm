@@ -1,0 +1,29 @@
+name: data_parse
+description: "Parse JSON, YAML, CSV, or XML text into structured data. Optionally apply a filter or aggregation."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    format:
+      type: string
+      enum: [json, yaml, csv, xml]
+    content:
+      type: string
+      description: "Raw text to parse"
+    operation:
+      type: string
+      enum: [parse, filter, keys, length]
+      default: parse
+      description: "parse = return full structure; filter = apply jq-like key filter; keys = list top-level keys; length = count items"
+    filter_key:
+      type: string
+      description: "For filter operation: top-level key to extract"
+  required: [format, content]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 10.0
+retry:
+  max_attempts: 1

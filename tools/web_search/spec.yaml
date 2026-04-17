@@ -1,0 +1,35 @@
+name: web_search
+description: "Search the web using DuckDuckGo and return a list of results with titles, URLs, and snippets."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "The search query"
+    max_results:
+      type: integer
+      description: "Maximum number of results to return (default 5, max 20)"
+      default: 5
+      minimum: 1
+      maximum: 20
+  required: [query]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    results:
+      type: array
+      items:
+        type: object
+        properties:
+          title: {type: string}
+          url: {type: string}
+          snippet: {type: string}
+timeout: 30.0
+retry:
+  max_attempts: 3
+  backoff_base: 2.0
+  backoff_max: 30.0

@@ -1,0 +1,32 @@
+name: shell_exec
+description: "Execute a shell command in a sandboxed subprocess. Working directory is jailed to project root. Blocked commands (rm -rf, sudo, etc.) are rejected."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: [shell_exec]
+input_schema:
+  type: object
+  properties:
+    command:
+      type: string
+      description: "Shell command to execute"
+    timeout:
+      type: number
+      description: "Timeout in seconds (default 30, max 300)"
+      default: 30
+      minimum: 1
+      maximum: 300
+    working_dir:
+      type: string
+      description: "Subdirectory to run in (relative, default is project root)"
+      default: "."
+  required: [command]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    stdout: {type: string}
+    stderr: {type: string}
+    returncode: {type: integer}
+timeout: 310.0
+retry:
+  max_attempts: 1

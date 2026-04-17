@@ -1,0 +1,22 @@
+# Default swarm configuration — overridden by user config, project config, env vars, CLI flags
+
+default_model: "llama-3.3-70b-versatile"
+log_level: "INFO"
+log_file: null
+
+trace_dir: "./traces"
+memory_dir: "./memory_store"
+memory_backend: "local"      # local | chroma-http
+
+bus_transport: "in-process"  # in-process | redis | nats
+redis_url: "redis://localhost:6379"
+
+agents_dir: "./agents"
+tools_dir: "./tools"
+
+api_host: "0.0.0.0"
+api_port: 8765
+dashboard_port: 8766
+
+safety_mode: "interactive"   # interactive | auto
+default_budget_usd: null

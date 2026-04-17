@@ -1,0 +1,18 @@
+name: echo
+role: echo
+description: "Trivial echo agent for testing the end-to-end pipeline."
+version: "1.0.0"
+system_prompt: |
+  You are a helpful assistant. Respond to the user's message clearly and concisely.
+  If asked to echo something, use the echo tool.
+model: llama-3.1-8b-instant
+temperature: 0.3
+tools: [echo]
+peer_agents: []
+memory_policy:
+  scratchpad: true
+  longterm: false
+termination:
+  max_iterations: 5
+  max_tokens: 1024
+hooks: {}

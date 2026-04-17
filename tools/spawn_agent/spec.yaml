@@ -1,0 +1,31 @@
+name: spawn_agent
+description: "Spawn a sub-agent of the given role to handle a sub-task. Returns the sub-agent's result."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: [spawn_agent]
+input_schema:
+  type: object
+  properties:
+    role:
+      type: string
+      description: "Agent role name (must exist in the registry)"
+    goal:
+      type: string
+      description: "Goal for the sub-agent"
+    input_payload:
+      type: object
+      description: "Optional structured input"
+    budget_usd:
+      type: number
+      description: "Optional budget cap for this sub-agent"
+  required: [role, goal]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    output: {}
+    success: {type: boolean}
+    cost: {type: number}
+timeout: 300.0
+retry:
+  max_attempts: 1

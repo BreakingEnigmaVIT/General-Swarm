@@ -1,0 +1,26 @@
+name: self_reflect
+description: "Ask the LLM to critique and improve the agent's most recent output. Returns a structured self-assessment."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    content:
+      type: string
+      description: "The content to reflect on"
+    criteria:
+      type: string
+      description: "Evaluation criteria (optional)"
+  required: [content]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    score: {type: integer}
+    strengths: {type: array, items: {type: string}}
+    weaknesses: {type: array, items: {type: string}}
+    improved: {type: string}
+timeout: 60.0
+retry:
+  max_attempts: 2

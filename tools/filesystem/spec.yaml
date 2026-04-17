@@ -1,0 +1,35 @@
+name: filesystem
+description: "Read, write, list, and search files in the working directory. Write operations are restricted to the project root."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: [filesystem_write]
+input_schema:
+  type: object
+  properties:
+    operation:
+      type: string
+      enum: [read, write, append, list, search, delete, exists]
+      description: "Operation to perform"
+    path:
+      type: string
+      description: "File or directory path (relative to working directory)"
+    content:
+      type: string
+      description: "Content for write/append operations"
+    query:
+      type: string
+      description: "Search query for 'search' operation"
+    recursive:
+      type: boolean
+      description: "Whether to recurse into subdirectories for list/search"
+      default: false
+    max_results:
+      type: integer
+      default: 20
+  required: [operation, path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 15.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,28 @@
+name: send_message
+description: "Send a message to another agent via the message bus."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: []
+input_schema:
+  type: object
+  properties:
+    recipient_id:
+      type: string
+      description: "Agent ID to send the message to"
+    payload:
+      type: object
+      description: "Message payload"
+    message_type:
+      type: string
+      enum: [request, notification, handoff]
+      default: request
+  required: [recipient_id, payload]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    sent: {type: boolean}
+    message_id: {type: string}
+timeout: 10.0
+retry:
+  max_attempts: 2

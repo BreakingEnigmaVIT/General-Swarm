@@ -1,0 +1,31 @@
+name: web_fetch
+description: "Fetch a web page and return cleaned text content. Strips scripts, styles, and boilerplate."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    url:
+      type: string
+      description: "The URL to fetch"
+    max_chars:
+      type: integer
+      description: "Maximum characters to return (default 8000)"
+      default: 8000
+      minimum: 100
+      maximum: 50000
+  required: [url]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    url: {type: string}
+    title: {type: string}
+    content: {type: string}
+    char_count: {type: integer}
+timeout: 30.0
+retry:
+  max_attempts: 2
+  backoff_base: 2.0
+  backoff_max: 10.0
