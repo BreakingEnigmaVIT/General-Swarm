@@ -248,9 +248,10 @@ class Agent:
         call_id: str,
         task: Task,
     ) -> dict[str, Any]:
-        # Permission check
+        # Permission check — return error dict so the LLM can handle it gracefully
         if name not in self.spec.tools:
-            raise ToolPermissionError(self.spec.role, name)
+            log.warning("tool_permission_denied", agent=self.spec.role, tool=name)
+            return {"error": f"Tool '{name}' is not in the allowed tools list for role '{self.spec.role}'"}
 
         if name not in self._tools:
             return {"error": f"Tool '{name}' not found in registry"}

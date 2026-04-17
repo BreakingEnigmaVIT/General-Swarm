@@ -1,0 +1,39 @@
+name: research_swarm
+description: |
+  Research swarm: a researcher gathers web data, a summarizer condenses it,
+  and a critic reviews the final brief for accuracy and completeness.
+
+orchestrator: orchestrator
+
+agents:
+  - role: orchestrator
+    count: 1
+  - role: researcher
+    count: 1
+  - role: summarizer
+    count: 1
+  - role: critic
+    count: 1
+
+coordination:
+  strategy: hierarchical
+  max_subswarm_size: 3
+  consensus_protocol: majority
+  debate_max_rounds: 2
+
+budget:
+  max_cost_usd: 0.50
+  warn_at_fraction: 0.8
+
+safety:
+  mode: auto
+  tool_allowlist:
+    - web_search
+    - web_fetch
+    - memory_store
+    - memory_retrieve
+    - self_reflect
+    - spawn_agent
+    - send_message
+
+memory_backend: local

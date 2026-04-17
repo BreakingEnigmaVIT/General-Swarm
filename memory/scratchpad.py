@@ -72,11 +72,19 @@ class Scratchpad(MemoryInterface):
     def _maybe_compact(self) -> None:
         if self.token_estimate() < self._max_tokens:
             return
-        # Keep system message + last 4 exchanges; summarise the rest
-        system = [m for m in self._messages if m.get("role") == "system"]
+        # Keep only the original (non-compaction) system prompt, if present
+        original_system = next(
+            (m for m in self._messages
+             if m.get("role") == "system"
+             and not str(m.get("content", "")).startswith("[COMPACTED:")),
+            None,
+        )
+        # Strip all system messages (including old compaction notices) from the history
         rest = [m for m in self._messages if m.get("role") != "system"]
-        keep_tail = rest[-8:] if len(rest) > 8 else rest
-        dropped = len(rest) - len(keep_tail)
+        # Always drop at least 1 message so the list shrinks on every compact call
+        keep_count = max(1, min(8, len(rest) - 1))
+        keep_tail = rest[-keep_count:]
+        dropped = len(self._messages) - (1 if original_system else 0) - len(keep_tail)
         if dropped > 0:
             summary = {
                 "role": "system",
@@ -84,5 +92,10 @@ class Scratchpad(MemoryInterface):
                     f"[COMPACTED: {dropped} earlier messages omitted to stay within context limit.]"
                 ),
             }
-            self._messages = system + [summary] + keep_tail
+            new_messages = []
+            if original_system:
+                new_messages.append(original_system)
+            new_messages.append(summary)
+            new_messages.extend(keep_tail)
+            self._messages = new_messages
             log.debug("scratchpad_compacted", agent_id=self._agent_id, dropped=dropped)

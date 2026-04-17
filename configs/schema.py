@@ -43,6 +43,29 @@ class ToolSpec(BaseModel):
     timeout: float = 30.0
     retry: RetryPolicy = Field(default_factory=RetryPolicy)
 
+    @staticmethod
+    def _sanitize_schema(schema: dict[str, Any]) -> dict[str, Any]:
+        """Strip JSON Schema keywords unsupported by Groq/Llama tool-calling.
+
+        Llama models fall back to the broken <function=...> text format when
+        they encounter keywords like default/minimum/maximum in property defs.
+        """
+        _UNSUPPORTED = {"default", "minimum", "maximum", "minLength", "maxLength",
+                        "minItems", "maxItems", "exclusiveMinimum", "exclusiveMaximum",
+                        "multipleOf", "pattern", "format", "examples", "$schema"}
+        out: dict[str, Any] = {}
+        for k, v in schema.items():
+            if k in _UNSUPPORTED:
+                continue
+            if k == "properties" and isinstance(v, dict):
+                out[k] = {pk: ToolSpec._sanitize_schema(pv) if isinstance(pv, dict) else pv
+                          for pk, pv in v.items()}
+            elif k == "items" and isinstance(v, dict):
+                out[k] = ToolSpec._sanitize_schema(v)
+            else:
+                out[k] = v
+        return out
+
     def to_openai_function(self) -> dict[str, Any]:
         """Convert to OpenAI/Groq tool-calling schema."""
         return {
@@ -50,7 +73,7 @@ class ToolSpec(BaseModel):
             "function": {
                 "name": self.name,
                 "description": self.description,
-                "parameters": self.input_schema,
+                "parameters": self._sanitize_schema(self.input_schema),
             },
         }
 

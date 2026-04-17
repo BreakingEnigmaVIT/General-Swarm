@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from tools.base import ToolHandler
@@ -17,3 +18,9 @@ class EchoHandler(ToolHandler):
 
 
 handler = EchoHandler()
+
+# Pre-load spec so the module-level handler is usable without going through the registry
+_spec_path = Path(__file__).parent / "spec.yaml"
+if _spec_path.exists():
+    from configs.loader import load_tool_spec
+    handler.spec = load_tool_spec(_spec_path)

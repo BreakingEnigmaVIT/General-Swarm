@@ -1,0 +1,40 @@
+name: coding_swarm
+description: |
+  Coding swarm: a planner designs the approach, a coder implements it,
+  and a critic reviews the code for quality and correctness.
+
+orchestrator: orchestrator
+
+agents:
+  - role: orchestrator
+    count: 1
+  - role: planner
+    count: 1
+  - role: coder
+    count: 1
+  - role: critic
+    count: 1
+
+coordination:
+  strategy: hierarchical
+  max_subswarm_size: 3
+  consensus_protocol: weighted
+  debate_max_rounds: 2
+
+budget:
+  max_cost_usd: 1.00
+  warn_at_fraction: 0.7
+
+safety:
+  mode: interactive   # Confirm before writing/deleting files
+  tool_allowlist:
+    - filesystem
+    - shell_exec
+    - calculator
+    - data_parse
+    - memory_retrieve
+    - self_reflect
+    - spawn_agent
+    - send_message
+
+memory_backend: local

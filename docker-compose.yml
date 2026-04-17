@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  swarm:
+    build: .
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - SWARM_BUS_TRANSPORT=redis
+      - SWARM_REDIS_URL=redis://redis:6379
+      - SWARM_MEMORY_DIR=/data/memory
+      - SWARM_TRACE_DIR=/data/traces
+      - SWARM_LOG_LEVEL=INFO
+    volumes:
+      - swarm_data:/data
+      - ./agents:/app/agents:ro
+      - ./tools:/app/tools:ro
+      - ./configs:/app/configs:ro
+    ports:
+      - "8765:8765"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  swarm_data:
+  redis_data:

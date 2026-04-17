@@ -128,3 +128,26 @@ class LocalChromaMemory(MemoryInterface):
             self._collection = self._client.get_or_create_collection(self._collection_name)
         except Exception as exc:
             log.error("longterm_clear_error", error=str(exc))
+
+    def close(self) -> None:
+        """Release the ChromaDB client and its SQLite lock (important on Windows)."""
+        if self._use_fallback or self._client is None:
+            return
+        try:
+            self._collection = None
+            # Stop every cached system so SQLite file handles are closed, then
+            # clear the cache so future clients don't reuse the stopped system.
+            try:
+                from chromadb.api.client import SharedSystemClient
+                for system in list(SharedSystemClient._identifier_to_system.values()):
+                    try:
+                        system.stop()
+                    except Exception:
+                        pass
+                SharedSystemClient._identifier_to_system = {}
+                SharedSystemClient._identifier_to_refcount = {}
+            except Exception:
+                pass
+            self._client = None
+        except Exception as exc:
+            log.warning("longterm_close_error", error=str(exc))

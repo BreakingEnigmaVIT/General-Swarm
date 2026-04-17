@@ -1,0 +1,25 @@
+name: simple_chat
+description: "Single echo agent — fastest possible swarm for conversational tasks."
+
+orchestrator: orchestrator
+
+agents:
+  - role: echo
+    count: 1
+    model_override: llama-3.1-8b-instant
+
+coordination:
+  strategy: hierarchical
+  max_subswarm_size: 1
+  consensus_protocol: majority
+  debate_max_rounds: 1
+
+budget:
+  max_cost_usd: 0.05
+  warn_at_fraction: 0.8
+
+safety:
+  mode: auto
+  tool_allowlist: [echo]
+
+memory_backend: local
