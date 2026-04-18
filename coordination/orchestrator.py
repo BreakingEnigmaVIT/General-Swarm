@@ -21,12 +21,13 @@ from __future__ import annotations
 import json
 import uuid
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from configs.schema import AgentSpec, TopologySpec
 from coordination.bus import MessageBus
 from coordination.subswarm import SubswarmCoordinator
 from coordination.task_graph import TaskGraph, TaskGraphExecutor
+from coordination.task_queue import RedisStreamTaskQueue
 from core.agent import Agent
 from core.exceptions import SwarmError
 from core.task import Task, TaskConstraints, TaskResult, TokenUsage
@@ -82,6 +83,8 @@ class SwarmRuntime:
         longterm_memory: Optional[LocalChromaMemory] = None,
         ledger: Optional[CostLedger] = None,
         trace_id: Optional[str] = None,
+        deployment_mode: str = "local",
+        redis_url: str = "redis://localhost:6379",
     ) -> None:
         self.topology = topology
         self._provider = provider
@@ -91,6 +94,8 @@ class SwarmRuntime:
         self._longterm = longterm_memory
         self._ledger = ledger or CostLedger()
         self.trace_id = trace_id or str(uuid.uuid4())
+        self._deployment_mode = deployment_mode
+        self._redis_url = redis_url
 
         # Wire runtime-injectable tools
         self._wire_tools()
@@ -198,12 +203,24 @@ class SwarmRuntime:
 
         log.info("task_graph_built", tasks=len(task_graph.all_tasks()))
 
+        tq: Optional[RedisStreamTaskQueue] = None
+        dispatch_mode: Literal["in_process", "task_queue"] = "in_process"
+        if self._deployment_mode in ("redis-workers", "kubernetes"):
+            tq = RedisStreamTaskQueue(self._redis_url)
+            dispatch_mode = "task_queue"
+
         executor = TaskGraphExecutor(
             executor=self._execute_task,
             global_timeout=root_task.constraints.timeout,
             global_budget=root_task.constraints.budget,
+            task_queue=tq,
+            dispatch_mode=dispatch_mode,
         )
-        results = await executor.run(task_graph)
+        try:
+            results = await executor.run(task_graph)
+        finally:
+            if tq is not None:
+                await tq.aclose()
 
         # Aggregate results
         successful = [r for r in results if r.success]
