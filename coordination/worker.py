@@ -72,6 +72,18 @@ async def _run_worker() -> None:
     redis_url = os.environ.get("SWARM_REDIS_URL") or os.environ.get("REDIS_URL", cfg.redis_url)
     stream_prefix = os.environ.get("SWARM_STREAM_PREFIX", "swarm")
     queue = RedisStreamTaskQueue(redis_url, stream_prefix=stream_prefix)
+    redis_client = await queue._get_redis()
+    try:
+        await redis_client.ping()
+    except Exception as exc:
+        log.error("redis_unreachable", redis_url=redis_url, error=str(exc))
+        print(
+            f"\n[swarm-worker] Cannot reach Redis at {redis_url!r} ({exc}).\n"
+            "  Start Redis: docker compose up -d redis\n"
+            "  PowerShell: $env:SWARM_REDIS_URL='redis://localhost:6379'\n",
+            file=sys.stderr,
+        )
+        sys.exit(2)
 
     tr, ar, pr = bootstrap_registries(
         tools_dir=tools_dir,
@@ -93,7 +105,6 @@ async def _run_worker() -> None:
     pub_channel = f"{stream_prefix}:{orch_id}"
     group = f"workers:{role}"
     sem = asyncio.Semaphore(concurrency)
-    redis_client = await queue._get_redis()
     stub = os.environ.get("SWARM_WORKER_STUB") == "1"
 
     background: Set[asyncio.Task[None]] = set()
