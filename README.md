@@ -82,7 +82,7 @@ See [docs/how-to-add-a-tool.md](docs/how-to-add-a-tool.md).
 
 ## Architecture
 
-See [docs/architecture.md](docs/architecture.md) for the full design.
+See [docs/architecture.md](docs/architecture.md) for the full design. **Redis Streams workers and KEDA** (stream names, consumer groups, ScaledObject/ScaledJob) are described in [docs/keda-architecture.md](docs/keda-architecture.md).
 
 ## Tests
 
@@ -98,10 +98,18 @@ pytest tests/e2e -v
 
 ```bash
 cp .env.example .env   # set GROQ_API_KEY
-docker-compose up --build
+docker compose up --build
 # API: http://localhost:8765
 ```
 
+Optional **queue workers** (set `SWARM_DEPLOYMENT_MODE=redis-workers` in `.env` for the API service):
+
+```bash
+docker compose --profile queue-workers up --build
+```
+
+See [docs/deployment.md](docs/deployment.md) for environment variables and local worker processes.
+
 ## Non-Goals (v1)
 
-No fine-tuning, no image/voice/video tools, no Kubernetes manifests, no multi-tenancy. See the build plan for the full list.
+No fine-tuning, no image/voice/video tools, no checked-in production Kubernetes/Helm chart (see [docs/keda-architecture.md](docs/keda-architecture.md) for the scaling contract), no multi-tenancy. See the build plan for the full list.

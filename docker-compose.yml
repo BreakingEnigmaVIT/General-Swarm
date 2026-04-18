@@ -7,6 +7,10 @@ services:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - SWARM_BUS_TRANSPORT=redis
       - SWARM_REDIS_URL=redis://redis:6379
+      # local = in-process TaskGraphExecutor; redis-workers = Redis Streams + swarm-worker profile
+      - SWARM_DEPLOYMENT_MODE=${SWARM_DEPLOYMENT_MODE:-local}
+      - SWARM_STREAM_PREFIX=${SWARM_STREAM_PREFIX:-swarm}
+      - SWARM_ORCHESTRATOR_ID=${SWARM_ORCHESTRATOR_ID:-orchestrator}
       - SWARM_MEMORY_DIR=/data/memory
       - SWARM_TRACE_DIR=/data/traces
       - SWARM_LOG_LEVEL=INFO
@@ -17,6 +21,34 @@ services:
       - ./configs:/app/configs:ro
     ports:
       - "8765:8765"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # One role per service; duplicate or use K8s for full multi-role fleets.
+  swarm-worker:
+    profiles: ["queue-workers"]
+    build: .
+    command: ["python", "-m", "coordination.worker"]
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - SWARM_BUS_TRANSPORT=redis
+      - SWARM_REDIS_URL=redis://redis:6379
+      - SWARM_DEPLOYMENT_MODE=redis-workers
+      - SWARM_STREAM_PREFIX=${SWARM_STREAM_PREFIX:-swarm}
+      - SWARM_ORCHESTRATOR_ID=${SWARM_ORCHESTRATOR_ID:-orchestrator}
+      - SWARM_WORKER_ROLE=${SWARM_WORKER_ROLE:-coder}
+      - SWARM_WORKER_CONCURRENCY=${SWARM_WORKER_CONCURRENCY:-1}
+      - HOSTNAME=${SWARM_WORKER_HOSTNAME:-swarm-worker-1}
+      - SWARM_MEMORY_DIR=/data/memory
+      - SWARM_TRACE_DIR=/data/traces
+      - SWARM_LOG_LEVEL=INFO
+    volumes:
+      - swarm_data:/data
+      - ./agents:/app/agents:ro
+      - ./tools:/app/tools:ro
+      - ./configs:/app/configs:ro
     depends_on:
       redis:
         condition: service_healthy

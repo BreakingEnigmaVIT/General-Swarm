@@ -27,3 +27,7 @@ ENV PYTHONPATH=/app
 EXPOSE 8765
 
 CMD ["python", "-m", "cli.main", "dashboard", "--host", "0.0.0.0", "--port", "8765"]
+
+# Worker image (same build): override CMD with
+#   python -m coordination.worker
+# and set SWARM_WORKER_ROLE, SWARM_REDIS_URL, SWARM_STREAM_PREFIX (see docs/deployment.md).

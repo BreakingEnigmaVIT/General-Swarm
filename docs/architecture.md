@@ -20,6 +20,8 @@ SwarmRuntime  ──────────────────────
     │       │ dispatch tasks to specialist agents                        │
     │       ▼                                                            │
     │   TaskGraphExecutor (async DAG)                                    │
+    │       │  local: run Agent in-process                               │
+    │       │  redis-workers/k8s: enqueue → Redis Stream → remote Worker│
     │       │                                                            │
     │       ├── Agent (researcher)   ──► ReAct loop                     │
     │       ├── Agent (coder)        ──► ReAct loop                     │
@@ -52,6 +54,20 @@ SwarmRuntime  ──────────────────────
 | `examples/` | Reference topologies |
 | `tests/` | Unit, integration, end-to-end test suites |
 | `docs/` | Architecture, how-to guides, deployment |
+
+## Deployment modes and task queue
+
+`SwarmConfig.deployment_mode` (`SWARM_DEPLOYMENT_MODE`) selects how `TaskGraphExecutor` runs leaf tasks:
+
+| Mode | Queue | Behaviour |
+|------|--------|-----------|
+| `local` (default) | `InProcessTaskQueue` | Tasks run in the same process via `Agent.run_task` (existing behaviour). |
+| `redis-workers` | `RedisStreamTaskQueue` | Tasks are **`XADD`**’d per role; workers consume with **`XREADGROUP`**; results sit in Redis keys until the orchestrator picks them up. |
+| `kubernetes` | `RedisStreamTaskQueue` | Same as `redis-workers`; name signals cluster/KEDA expectations. |
+
+Stream layout, DLQ, and consumer groups are documented in **[KEDA architecture](keda-architecture.md)**.
+
+**Worker entrypoint:** `python -m coordination.worker` (`coordination/worker.py`) — one OS process per **role** (or one deployment with `SWARM_WORKER_ROLE`).
 
 ## Core Data Flow
 
@@ -115,3 +131,7 @@ Every event emits a structured log record AND a trace span:
 # config: bus_transport = "redis"       →  RedisBus (pub/sub)
 # One config line — zero logic changes in agent code.
 ```
+
+## Autoscaling (KEDA)
+
+When using **Redis Streams** for tasks, **KEDA** can scale each `coordination.worker` deployment by depth / pending entries on `{prefix}:tasks:{role}` with consumer group `workers:{role}`. See **[keda-architecture.md](keda-architecture.md)** for stream names, groups, and ScaledObject / ScaledJob patterns.
