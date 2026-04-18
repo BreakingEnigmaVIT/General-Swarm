@@ -195,6 +195,7 @@ class SwarmConfig(BaseSettings):
     memory_backend: str = "local"
     bus_transport: str = "in-process"
     redis_url: str = "redis://localhost:6379"
+    deployment_mode: Literal["local", "redis-workers", "kubernetes"] = "local"
     agents_dir: str = "./agents"
     tools_dir: str = "./tools"
     api_host: str = "0.0.0.0"

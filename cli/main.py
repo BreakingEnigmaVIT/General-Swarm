@@ -107,6 +107,8 @@ def _build_runtime(cfg, topology_path: Optional[str]):
         bus=bus,
         longterm_memory=longterm,
         ledger=ledger,
+        deployment_mode=cfg.deployment_mode,
+        redis_url=cfg.redis_url,
     )
     return runtime, ledger
 

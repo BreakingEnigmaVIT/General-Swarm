@@ -12,13 +12,15 @@ from __future__ import annotations
 
 import asyncio
 import time
-from typing import Any, Callable, Coroutine, Optional
+from typing import Any, Callable, Coroutine, Literal, Optional
 
 import networkx as nx
 
+from coordination.task_queue import TaskQueue
 from core.exceptions import CyclicTaskGraphError
 from core.task import Task, TaskResult, TaskStatus
 from observability.logging import get_logger
+from observability.tracing import Span, get_tracer
 
 log = get_logger("coordination.task_graph")
 
@@ -100,11 +102,21 @@ class TaskGraphExecutor:
         executor: ExecutorFn,
         global_timeout: Optional[float] = None,
         global_budget: Optional[float] = None,
+        task_queue: Optional[TaskQueue] = None,
+        dispatch_mode: Literal["in_process", "task_queue"] = "in_process",
     ) -> None:
         self._executor = executor
         self._global_timeout = global_timeout
         self._global_budget = global_budget
         self._total_cost = 0.0
+        if task_queue is not None:
+            self._task_queue = task_queue
+            self._dispatch_mode: Literal["in_process", "task_queue"] = "task_queue"
+        else:
+            self._task_queue = None
+            if dispatch_mode == "task_queue":
+                raise ValueError("task_queue is required when dispatch_mode is 'task_queue'")
+            self._dispatch_mode = "in_process"
 
     async def run(self, graph: TaskGraph) -> list[TaskResult]:
         start = time.time()
@@ -143,6 +155,28 @@ class TaskGraphExecutor:
 
     async def _run_one(self, task: Task, graph: TaskGraph) -> TaskResult:
         try:
+            if self._task_queue is not None:
+                role = task.input_payload.get("agent_role", "general")
+                await self._task_queue.enqueue(role, task)
+                result = await self._task_queue.wait_for_result(
+                    task.id,
+                    timeout=task.constraints.timeout,
+                    poll_interval=0.5,
+                )
+                if result is None:
+                    tracer = get_tracer()
+                    with Span(tracer, "task_timeout", "task", task_id=task.id):
+                        pass
+                    err = "task_timeout"
+                    task.mark_failed(err)
+                    graph.update_task(task)
+                    return TaskResult(output=None, success=False, error=err)
+                self._total_cost += result.cost
+                task.mark_completed(result)
+                graph.update_task(task)
+                log.info("task_completed", task_id=task.id[:8], cost=round(result.cost, 6))
+                return result
+
             result = await self._executor(task)
             self._total_cost += result.cost
             task.mark_completed(result)
