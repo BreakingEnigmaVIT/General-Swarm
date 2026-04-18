@@ -452,24 +452,57 @@ def cost(trace_id: Optional[str], trace_dir: str, output_json: bool) -> None:
 # ── dashboard ─────────────────────────────────────────────────────────────────
 
 @cli.command()
-@click.option("--host", default="0.0.0.0")
-@click.option("--port", default=8765, type=int)
-@click.option("--api-key", envvar="GROQ_API_KEY", default=None)
-def dashboard(host: str, port: int, api_key: Optional[str]) -> None:
+@click.option("--host", default="0.0.0.0", show_default=True)
+@click.option("--port", default=8765, type=int, show_default=True)
+@click.option("--api-key", envvar="GROQ_API_KEY", default=None, help="Groq API key")
+@click.option("--openrouter-api-key", envvar="OPENROUTER_API_KEY", default=None, help="OpenRouter API key")
+@click.option("--provider", "-p", default=None, type=click.Choice(["groq", "openrouter"]))
+@click.option("--topology", default=None, help="Optional topology YAML path")
+@click.option("--log-level", default="INFO", show_default=True)
+def dashboard(
+    host: str,
+    port: int,
+    api_key: Optional[str],
+    openrouter_api_key: Optional[str],
+    provider: Optional[str],
+    topology: Optional[str],
+    log_level: str,
+) -> None:
     """Start the local API server and open the dashboard."""
     import uvicorn
-    from configs.loader import load_swarm_config
-    cfg = load_swarm_config({"groq_api_key": api_key} if api_key else None)
+
+    cfg = _load_config(
+        api_key=api_key,
+        model=None,
+        log_level=log_level,
+        trace_dir="./traces",
+        safety_mode="auto",   # API mode: no interactive prompts
+        provider=provider,
+        openrouter_api_key=openrouter_api_key,
+    )
     _setup_logging(cfg)
+
+    # Bootstrap registries once so all tools/agents/providers are available
+    # to the per-request factory below.
+    _bootstrap(cfg)
 
     console.print(Panel(
         f"[bold cyan]Swarm Dashboard[/bold cyan]\n"
         f"API:  http://{host}:{port}\n"
-        f"Docs: http://{host}:{port}/docs",
+        f"Docs: http://{host}:{port}/docs\n"
+        f"Provider: {cfg.provider or 'groq'}",
         border_style="cyan",
     ))
 
-    from api.server import app, set_runtime
+    # Wire a factory so each POST /run gets a fresh, isolated SwarmRuntime.
+    # Using a factory (rather than a single shared runtime) prevents state
+    # leakage between consecutive API calls.
+    def _make_runtime():
+        return _build_runtime(cfg, topology_path=topology, deploy=False)
+
+    from api.server import app, set_runtime_factory
+    set_runtime_factory(_make_runtime, cfg)
+
     uvicorn.run(app, host=host, port=port, log_level="warning")
 
 
