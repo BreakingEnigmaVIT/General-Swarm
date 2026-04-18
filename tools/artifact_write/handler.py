@@ -20,6 +20,19 @@ class ArtifactWriteHandler(ToolHandler):
         from memory.artifacts import get_artifact_registry
 
         reg = _registry or get_artifact_registry()
+
+        # artifact_type is required — return a clear instructional error rather
+        # than crashing with a KeyError that the model may not recover from.
+        if "artifact_type" not in inputs:
+            return {
+                "error": (
+                    "Missing required field 'artifact_type'. "
+                    f"Valid types: {list(ARTIFACT_REGISTRY.keys())}. "
+                    "Call artifact_write with artifact_type as a top-level field, "
+                    "e.g. {\"artifact_type\": \"ArchitectureDoc\", \"payload\": {...}}"
+                )
+            }
+
         artifact_type_str = inputs["artifact_type"]
         payload = inputs.get("payload", {})
 
