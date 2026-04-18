@@ -1,0 +1,21 @@
+name: wiki_lookup
+description: "Structured Wikipedia lookup for terminology, technology background, or definitions."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    term:
+      type: string
+      description: "Term or topic to look up on Wikipedia"
+    sentences:
+      type: integer
+      description: "Number of summary sentences to return"
+  required: [term]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

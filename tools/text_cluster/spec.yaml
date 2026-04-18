@@ -1,0 +1,26 @@
+name: text_cluster
+description: "Topic clustering for feedback corpora using TF-IDF + KMeans (local) or existing embeddings path. Returns clusters with representative texts."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    texts:
+      type: array
+      items:
+        type: string
+      description: "Corpus of texts to cluster"
+    n_clusters:
+      type: integer
+      description: "Number of clusters (default: auto-detect 3-8)"
+    min_cluster_size:
+      type: integer
+      description: "Minimum texts per cluster to report"
+  required: [texts]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 30.0
+retry:
+  max_attempts: 1

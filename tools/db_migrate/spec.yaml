@@ -1,0 +1,32 @@
+name: db_migrate
+description: "Apply or rollback database migrations via Alembic or Prisma. Supports dry_run mode. Flags destructive operations."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [db_write]
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [upgrade, downgrade, current, history, dry_run]
+      description: "Migration action to perform"
+    revision:
+      type: string
+      description: "Target revision (default: head for upgrade, -1 for downgrade)"
+    working_dir:
+      type: string
+      description: "Directory containing alembic.ini or prisma/schema.prisma"
+    tool:
+      type: string
+      enum: [auto, alembic, prisma]
+      description: "Migration tool (auto-detected)"
+    dry_run:
+      type: boolean
+      description: "Preview SQL without applying"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 60.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,30 @@
+name: screenshot_capture
+description: "Headless-browser screenshot of a URL. Used by Frontend agent for self-review. Requires playwright or selenium."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    url:
+      type: string
+      description: "URL to screenshot (must be http/https)"
+    output_path:
+      type: string
+      description: "Path to write the PNG file (relative to project root)"
+    width:
+      type: integer
+      description: "Viewport width in pixels"
+    height:
+      type: integer
+      description: "Viewport height in pixels"
+    wait_seconds:
+      type: integer
+      description: "Seconds to wait for page load"
+  required: [url, output_path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 45.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,26 @@
+name: changelog_generate
+description: "Build a changelog from artifact lineage — walks from ReleaseDecision back through CodeChangeSets, PRD, and ArchitectureDoc to generate a human-readable entry."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    release_decision_id:
+      type: string
+      description: "Artifact ID of the ReleaseDecision to generate changelog for"
+    version_tag:
+      type: string
+      description: "Version string for this release (e.g. v1.2.0)"
+    output_path:
+      type: string
+      description: "Optional path to append changelog to (e.g. CHANGELOG.md)"
+    project_id:
+      type: string
+  required: [version_tag]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,24 @@
+name: ast_inspect
+description: "AST-based structural analysis: cyclomatic complexity, nesting depth, function length, unused exports. Language-aware."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "File or directory to inspect (relative to project root)"
+    language:
+      type: string
+      enum: [auto, python, javascript, typescript]
+    complexity_threshold:
+      type: integer
+      description: "Cyclomatic complexity above which to flag (default 10)"
+  required: [path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 30.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,33 @@
+name: docker_build
+description: "Builds Docker images from a Dockerfile. Push is a separate gated action requiring SWARM_DOCKER_REGISTRY credentials."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: [docker_build]
+input_schema:
+  type: object
+  properties:
+    dockerfile:
+      type: string
+      description: "Path to Dockerfile (relative to project root)"
+    context:
+      type: string
+      description: "Build context directory"
+    tag:
+      type: string
+      description: "Image tag (e.g. myapp:latest)"
+    build_args:
+      type: object
+      description: "Build arguments"
+    push:
+      type: boolean
+      description: "Push after build (gated — requires confirmation)"
+    platform:
+      type: string
+      description: "Target platform (e.g. linux/amd64)"
+  required: [tag]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 300.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,26 @@
+name: notion_page_create
+description: "Creates or updates Notion pages under a declared parent. Skipped gracefully if SWARM_NOTION_TOKEN is unset."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [notion_write]
+input_schema:
+  type: object
+  properties:
+    title:
+      type: string
+    content:
+      type: string
+      description: "Markdown content for the page body"
+    parent_page_id:
+      type: string
+      description: "Parent page or database ID"
+    page_id:
+      type: string
+      description: "If set, update this existing page"
+  required: [title, content]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

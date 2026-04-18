@@ -1,0 +1,32 @@
+name: env_manager
+description: "Push/pull environment config from Vault, Doppler, AWS SSM, or local dotenv. Secrets never enter traces. Writes to prod namespace are prod-risk gated."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [env_write]
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [get, set, list, delete, export_example]
+    backend:
+      type: string
+      enum: [auto, doppler, vault, aws_ssm, dotenv]
+    key:
+      type: string
+    value:
+      type: string
+      description: "Secret value — never logged or traced"
+    namespace:
+      type: string
+      description: "Environment namespace (e.g. production, staging, dev)"
+    output_file:
+      type: string
+      description: "For export_example: write .env.example to this path"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

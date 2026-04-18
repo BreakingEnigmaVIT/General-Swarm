@@ -1,0 +1,20 @@
+name: dependency_audit
+description: "Audits dependencies for known CVEs. Dispatches to pip-audit (Python), npm audit (Node), or govulncheck (Go)."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Directory containing dependency manifest (relative to project root)"
+    runtime:
+      type: string
+      enum: [auto, python, node, go]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 120.0
+retry:
+  max_attempts: 1

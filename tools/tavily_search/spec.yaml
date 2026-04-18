@@ -1,0 +1,30 @@
+name: tavily_search
+description: "Tavily-backed web search optimised for LLM agents. Returns structured results with URLs and snippets. Falls back to DuckDuckGo if SWARM_TAVILY_API_KEY is unset."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "Search query"
+    max_results:
+      type: integer
+      description: "Maximum results to return"
+    search_depth:
+      type: string
+      enum: [basic, advanced]
+      description: "Search depth: basic (fast) or advanced (deeper, slower)"
+    include_domains:
+      type: array
+      items:
+        type: string
+      description: "Restrict results to these domains"
+  required: [query]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 30.0
+retry:
+  max_attempts: 2

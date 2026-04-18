@@ -1,0 +1,39 @@
+name: git_ops
+description: "Git operations: branch, commit, push, open PR. Write operations (push, PR) are mutates-external and require confirmation. Pushing to main requires prod-risk approval."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [git_write]
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [status, branch, checkout, add, commit, push, pull, log, diff, pr_create]
+    branch_name:
+      type: string
+    commit_message:
+      type: string
+    files:
+      type: array
+      items:
+        type: string
+      description: "Files to stage for commit"
+    remote:
+      type: string
+      description: "Remote name (default: origin)"
+    pr_title:
+      type: string
+    pr_body:
+      type: string
+    base_branch:
+      type: string
+      description: "Base branch for PR (default: main)"
+    working_dir:
+      type: string
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 60.0
+retry:
+  max_attempts: 1

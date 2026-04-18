@@ -113,10 +113,13 @@ class AgentSlot(BaseModel):
 
 
 class CoordinationConfig(BaseModel):
-    strategy: Literal["hierarchical", "p2p", "hybrid"] = "hierarchical"
+    strategy: Literal["hierarchical", "p2p", "hybrid", "lifecycle"] = "hierarchical"
     max_subswarm_size: int = 5
     consensus_protocol: Literal["majority", "weighted", "debate"] = "majority"
     debate_max_rounds: int = 3
+    # Lifecycle-aware mode fields (§20.3)
+    lifecycle: Optional[str] = None          # e.g. "software_delivery"
+    approval_gates: bool = True              # pause for human at gate phases
 
 
 class BudgetConfig(BaseModel):
@@ -137,6 +140,24 @@ class SafetyConfig(BaseModel):
     )
 
 
+class ConnectorConfig(BaseModel):
+    """Optional external service credentials (all optional; tools skip gracefully if absent)."""
+    github_token: Optional[str] = None
+    linear_token: Optional[str] = None
+    notion_token: Optional[str] = None
+    cloudflare_token: Optional[str] = None
+    supabase_url: Optional[str] = None
+    supabase_key: Optional[str] = None
+    pagerduty_token: Optional[str] = None
+    intercom_token: Optional[str] = None
+    doppler_token: Optional[str] = None
+    prometheus_url: Optional[str] = None
+    loki_url: Optional[str] = None
+    grafana_url: Optional[str] = None
+    grafana_token: Optional[str] = None
+    uptime_kuma_url: Optional[str] = None
+
+
 class TopologySpec(BaseModel):
     name: str
     description: str = ""
@@ -146,6 +167,13 @@ class TopologySpec(BaseModel):
     budget: BudgetConfig = Field(default_factory=BudgetConfig)
     safety: SafetyConfig = Field(default_factory=SafetyConfig)
     memory_backend: str = "local"
+    # Workforce extension fields
+    connectors: ConnectorConfig = Field(default_factory=ConnectorConfig)
+    prod_risk_policy: Literal["always_require_human", "follow_safety_mode"] = "always_require_human"
+    dry_run: bool = True                     # DevOps tools dry-run by default in non-interactive CI
+    frontend_template: str = "react_tailwind"
+    backend_template: str = "fastapi"
+    scale: int = 1                           # multiplier for build-layer agent counts
 
 
 # ── Global swarm config (env + file layered) ──────────────────────────────────

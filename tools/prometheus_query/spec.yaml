@@ -1,0 +1,30 @@
+name: prometheus_query
+description: "Execute PromQL queries against a Prometheus instance. Read-only. Requires SWARM_PROMETHEUS_URL."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "PromQL expression"
+    start:
+      type: string
+      description: "ISO8601 start time for range queries"
+    end:
+      type: string
+      description: "ISO8601 end time"
+    step:
+      type: string
+      description: "Step interval (e.g. 30s, 1m)"
+    instant:
+      type: boolean
+      description: "If true, run instant query instead of range"
+  required: [query]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

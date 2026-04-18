@@ -1,0 +1,27 @@
+name: grafana_api
+description: "List and read Grafana dashboards. Write (create dashboard) is gated. Requires SWARM_GRAFANA_URL and SWARM_GRAFANA_TOKEN."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [list_dashboards, get_dashboard, search, create_dashboard]
+    uid:
+      type: string
+      description: "Dashboard UID for get_dashboard"
+    query:
+      type: string
+      description: "Search query"
+    dashboard_json:
+      type: object
+      description: "Dashboard model for create_dashboard"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

@@ -1,0 +1,46 @@
+name: postman_collection_run
+description: "Run a Postman collection via Newman CLI and return pass/fail stats. Requires Newman to be installed (npm install -g newman)."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [shell]
+input_schema:
+  type: object
+  properties:
+    collection_path:
+      type: string
+      description: "Relative path to a local Postman collection JSON file"
+    collection_url:
+      type: string
+      description: "URL to a public Postman collection (alternative to collection_path)"
+    environment:
+      type: object
+      additionalProperties:
+        type: string
+      description: "Inline environment key/value pairs to inject"
+    env_file:
+      type: string
+      description: "Relative path to a Postman environment JSON file"
+    timeout_ms:
+      type: integer
+      default: 30000
+      description: "Per-request timeout in milliseconds"
+    reporters:
+      type: array
+      items:
+        type: string
+      description: "Newman reporters to use (default: json)"
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    passed: {type: integer}
+    failed: {type: integer}
+    total_requests: {type: integer}
+    success: {type: boolean}
+    failures:
+      type: array
+      items:
+        type: object
+timeout: 120.0
+retry:
+  max_attempts: 1

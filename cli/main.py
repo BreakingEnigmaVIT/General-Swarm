@@ -528,5 +528,313 @@ def doctor(api_key: Optional[str], agents_dir: str, tools_dir: str) -> None:
         sys.exit(1)
 
 
+# ── Artifact commands ─────────────────────────────────────────────────────────
+
+@cli.group("artifact")
+def artifact_group() -> None:
+    """Inspect and manage workforce artifacts."""
+
+
+@artifact_group.command("list")
+@click.option("--project", default="", help="Filter by project id")
+@click.option("--type", "artifact_type", default="", help="Filter by artifact type")
+@click.option("--stage", default="", help="Filter by stage id")
+@click.option("--status", default="any", type=click.Choice(["draft", "approved", "superseded", "any"]))
+@click.option("--memory-dir", default="./memory_store")
+@click.option("--json", "output_json", is_flag=True)
+def artifact_list(
+    project: str, artifact_type: str, stage: str, status: str,
+    memory_dir: str, output_json: bool
+) -> None:
+    """List artifacts in the registry.
+
+    \b
+    Examples:
+      swarm artifact list
+      swarm artifact list --type PRD --status approved
+      swarm artifact list --stage planning --project my-project
+    """
+    from memory.artifacts import ArtifactRegistry
+
+    reg = ArtifactRegistry(persist_dir=memory_dir)
+
+    async def _fetch():
+        if artifact_type:
+            items = await reg.list_by_type(artifact_type, project_id=project, stage_id=stage)
+        elif stage:
+            items = await reg.list_by_stage(stage, project_id=project)
+        else:
+            items = await reg.list_all(project_id=project)
+        if status != "any":
+            items = [
+                a for a in items
+                if (a.status if isinstance(a.status, str) else a.status.value) == status
+            ]
+        return items
+
+    items = asyncio.run(_fetch())
+
+    if output_json:
+        click.echo(json.dumps([a.model_dump(mode="json") for a in items], indent=2, default=str))
+        return
+
+    t = Table(title=f"Artifacts ({len(items)})")
+    for col in ("ID", "Type", "Stage", "Status", "Created"):
+        t.add_column(col)
+    for a in items:
+        console.print(t.add_row(
+            a.id[:8],
+            a.artifact_type if isinstance(a.artifact_type, str) else a.artifact_type.value,
+            a.stage_id or "—",
+            a.status if isinstance(a.status, str) else a.status.value,
+            a.created_at.strftime("%Y-%m-%d %H:%M"),
+        ) or "")
+    console.print(t)
+
+
+@artifact_group.command("show")
+@click.argument("artifact_id")
+@click.option("--memory-dir", default="./memory_store")
+@click.option("--json", "output_json", is_flag=True)
+def artifact_show(artifact_id: str, memory_dir: str, output_json: bool) -> None:
+    """Pretty-print a single artifact including lineage.
+
+    \b
+    Example:
+      swarm artifact show abc12345
+    """
+    from memory.artifacts import ArtifactRegistry
+
+    reg = ArtifactRegistry(persist_dir=memory_dir)
+
+    async def _fetch():
+        artifact = await reg.get_by_id(artifact_id)
+        if artifact is None:
+            # Try prefix search — find first matching id
+            all_items = await reg.list_all()
+            for a in all_items:
+                if a.id.startswith(artifact_id):
+                    artifact = a
+                    break
+        lineage = await reg.get_lineage(artifact.id) if artifact else []
+        return artifact, lineage
+
+    artifact, lineage = asyncio.run(_fetch())
+
+    if artifact is None:
+        console.print(f"[red]Artifact '{artifact_id}' not found.[/red]")
+        sys.exit(1)
+
+    if output_json:
+        out = {
+            "artifact": artifact.model_dump(mode="json"),
+            "lineage": [a.model_dump(mode="json") for a in lineage],
+        }
+        click.echo(json.dumps(out, indent=2, default=str))
+        return
+
+    a_type = artifact.artifact_type if isinstance(artifact.artifact_type, str) else artifact.artifact_type.value
+    a_status = artifact.status if isinstance(artifact.status, str) else artifact.status.value
+    console.print(Panel(
+        f"[bold]Type:[/bold]    {a_type}\n"
+        f"[bold]ID:[/bold]      {artifact.id}\n"
+        f"[bold]Stage:[/bold]   {artifact.stage_id or '—'}\n"
+        f"[bold]Status:[/bold]  {a_status}\n"
+        f"[bold]Version:[/bold] {artifact.version}\n"
+        f"[bold]Author:[/bold]  {artifact.author_agent_id or '—'}\n"
+        f"[bold]Created:[/bold] {artifact.created_at}\n"
+        f"[bold]Lineage:[/bold] {', '.join(artifact.lineage) or 'root'}",
+        title=f"[bold]Artifact: {artifact.id[:8]}[/bold]",
+        border_style="cyan",
+    ))
+    if lineage:
+        console.print("\n[bold]Parent chain:[/bold]")
+        for parent in lineage:
+            p_type = parent.artifact_type if isinstance(parent.artifact_type, str) else parent.artifact_type.value
+            p_status = parent.status if isinstance(parent.status, str) else parent.status.value
+            console.print(f"  ↑ {parent.id[:8]}  [{p_type}]  {p_status}")
+
+
+# ── Phase gate commands ────────────────────────────────────────────────────────
+
+@cli.group("phase")
+def phase_group() -> None:
+    """Manage lifecycle phase approval gates."""
+
+
+@phase_group.command("approve")
+@click.argument("trace_id")
+@click.argument("phase_id")
+@click.option("--trace-dir", default="./traces")
+def phase_approve(trace_id: str, phase_id: str, trace_dir: str) -> None:
+    """Manually approve a pending lifecycle phase gate.
+
+    \b
+    Example:
+      swarm phase approve abc12345 planning
+    """
+    _write_phase_gate_decision(trace_dir, trace_id, phase_id, approved=True, reason="")
+    console.print(f"[green]✓ Phase '{phase_id}' approved for trace {trace_id[:8]}[/green]")
+
+
+@phase_group.command("reject")
+@click.argument("trace_id")
+@click.argument("phase_id")
+@click.option("--reason", default="", help="Reason for rejection")
+@click.option("--trace-dir", default="./traces")
+def phase_reject(trace_id: str, phase_id: str, reason: str, trace_dir: str) -> None:
+    """Reject a pending lifecycle phase gate.
+
+    \b
+    Example:
+      swarm phase reject abc12345 quality --reason "Test coverage too low"
+    """
+    _write_phase_gate_decision(trace_dir, trace_id, phase_id, approved=False, reason=reason)
+    console.print(f"[red]✗ Phase '{phase_id}' rejected for trace {trace_id[:8]}[/red]")
+    if reason:
+        console.print(f"  Reason: {reason}")
+
+
+def _write_phase_gate_decision(
+    trace_dir: str, trace_id: str, phase_id: str, approved: bool, reason: str
+) -> None:
+    """Write a phase gate decision file that the orchestrator polls."""
+    import datetime
+    gate_dir = Path(trace_dir) / "phase_gates"
+    gate_dir.mkdir(parents=True, exist_ok=True)
+    gate_file = gate_dir / f"{trace_id}_{phase_id}.json"
+    gate_file.write_text(json.dumps({
+        "trace_id": trace_id,
+        "phase_id": phase_id,
+        "approved": approved,
+        "reason": reason,
+        "decided_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+    }, indent=2))
+
+
+# ── Workforce run ─────────────────────────────────────────────────────────────
+
+@cli.command("workforce")
+@click.argument("topology")
+@click.option("--goal", "-g", required=True, help="Product goal for the workforce")
+@click.option("--api-key", envvar="GROQ_API_KEY", default=None)
+@click.option("--model", "-m", default=None)
+@click.option("--log-level", default="INFO", show_default=True)
+@click.option("--trace-dir", default="./traces", show_default=True)
+@click.option("--memory-dir", default="./memory_store", show_default=True)
+@click.option("--approve-all", is_flag=True, help="Auto-approve all phase gates (CI mode)")
+@click.option("--budget", default=None, type=float, help="Max spend in USD")
+@click.option("--json", "output_json", is_flag=True)
+def workforce(
+    topology: str,
+    goal: str,
+    api_key: Optional[str],
+    model: Optional[str],
+    log_level: str,
+    trace_dir: str,
+    memory_dir: str,
+    approve_all: bool,
+    budget: Optional[float],
+    output_json: bool,
+) -> None:
+    """Run a product goal through the full AI workforce lifecycle.
+
+    TOPOLOGY must point to a topology YAML with coordination.strategy=lifecycle.
+
+    \b
+    Example:
+      swarm workforce examples/software_delivery/topology.yaml \\
+        --goal "Build a URL-shortener SaaS with email/password auth and a dashboard"
+    """
+    safety_mode = "auto" if approve_all else "interactive"
+    cfg = _load_config(api_key, model, log_level, trace_dir, safety_mode)
+    cfg.memory_dir = memory_dir
+    _setup_logging(cfg)
+
+    if not cfg.groq_api_key:
+        console.print("[bold red]Error:[/bold red] GROQ_API_KEY is not set.")
+        sys.exit(1)
+
+    _bootstrap(cfg)
+
+    from configs.loader import load_topology_spec
+    topo = load_topology_spec(Path(topology))
+    if topo.coordination.strategy != "lifecycle":
+        console.print(
+            f"[yellow]Warning:[/yellow] topology strategy is '{topo.coordination.strategy}', "
+            "not 'lifecycle'. Overriding to 'lifecycle'."
+        )
+        topo.coordination.strategy = "lifecycle"
+
+    if approve_all:
+        topo.coordination.approval_gates = False
+
+    if budget:
+        topo.budget.max_cost_usd = budget
+
+    # Reset artifact registry for this run
+    from memory.artifacts import reset_artifact_registry
+    reset_artifact_registry(persist_dir=memory_dir)
+
+    runtime, ledger = _build_runtime(cfg, topology)
+    runtime.topology = topo
+
+    console.print(Panel(
+        f"[bold cyan]Workforce Run[/bold cyan]\n"
+        f"[bold]Goal:[/bold] {goal}\n"
+        f"[dim]Lifecycle:[/dim] {topo.coordination.lifecycle or 'software_delivery'}\n"
+        f"[dim]Trace:[/dim]    {runtime.trace_id[:8]}…\n"
+        f"[dim]Gates:[/dim]    {'auto-approved' if approve_all else 'interactive'}",
+        title="[bold]AI Digital Workforce[/bold]",
+        border_style="magenta",
+    ))
+
+    result = asyncio.run(runtime.run(goal))
+
+    if output_json:
+        click.echo(json.dumps({
+            "trace_id": runtime.trace_id,
+            "output": result.output,
+            "success": result.success,
+            "cost_usd": result.cost,
+            "tokens": result.token_usage.total_tokens,
+            "phases": result.metadata.get("phases", []),
+            "error": result.error,
+        }, indent=2, default=str))
+        return
+
+    border = "green" if result.success else "red"
+    status = "✓ Workforce Complete" if result.success else "✗ Workforce Failed"
+    console.print(Panel(
+        str(result.output or result.error or "No output"),
+        title=f"[bold]{status}[/bold]",
+        border_style=border,
+    ))
+
+    phases = result.metadata.get("phases", [])
+    if phases:
+        t = Table(title="Phase Summary")
+        for col in ("Phase", "Success", "Outputs Missing"):
+            t.add_column(col)
+        for ph in phases:
+            t.add_row(
+                ph["phase_id"],
+                "[green]✓[/green]" if ph["success"] else "[red]✗[/red]",
+                ", ".join(ph.get("output_missing", [])) or "—",
+            )
+        console.print(t)
+
+    console.print(
+        f"[dim]Cost: ${result.cost:.4f}  |  "
+        f"Tokens: {result.token_usage.total_tokens}  |  "
+        f"Trace: {runtime.trace_id[:8]}[/dim]"
+    )
+
+    console.print(
+        "\n[dim]Inspect artifacts:[/dim]  swarm artifact list\n"
+        "[dim]Show artifact:[/dim]     swarm artifact show <id>"
+    )
+
+
 if __name__ == "__main__":
     cli()

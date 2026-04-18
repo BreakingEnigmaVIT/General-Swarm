@@ -1,0 +1,23 @@
+name: repo_inspect
+description: "Read-only summary of the project repository: directory tree, detected languages, existing dependencies, and entry points."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Root path to inspect (default: current directory)"
+    max_depth:
+      type: integer
+      description: "Directory tree depth to show"
+    include_deps:
+      type: boolean
+      description: "Whether to parse dependency manifests"
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 15.0
+retry:
+  max_attempts: 1

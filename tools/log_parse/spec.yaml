@@ -1,0 +1,26 @@
+name: log_parse
+description: "Parse structured or unstructured log text into event streams. Extracts level, timestamp, service, message, and key fields for anomaly detection."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    log_text:
+      type: string
+      description: "Raw log content to parse"
+    log_file:
+      type: string
+      description: "Path to log file (alternative to log_text)"
+    format:
+      type: string
+      enum: [auto, json, logfmt, nginx, combined, plain]
+    max_lines:
+      type: integer
+      description: "Max lines to parse"
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 15.0
+retry:
+  max_attempts: 1

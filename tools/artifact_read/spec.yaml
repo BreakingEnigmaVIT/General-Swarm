@@ -1,0 +1,50 @@
+name: artifact_read
+description: >
+  Query the Artifact Registry by type, stage, lineage, or artifact id.
+  Returns structured artifact payloads. Agents must read workforce artifacts
+  through this tool rather than directly from long-term memory.
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    query_type:
+      type: string
+      enum: [by_id, latest_by_type, by_stage, by_lineage, list_all]
+      description: "How to query the registry."
+    artifact_id:
+      type: string
+      description: "Used with query_type=by_id or by_lineage."
+    artifact_type:
+      type: string
+      description: "Used with query_type=latest_by_type."
+    stage_id:
+      type: string
+      description: "Used with query_type=by_stage."
+    project_id:
+      type: string
+      description: "Optional project scoping for all query types."
+    status_filter:
+      type: string
+      enum: [draft, approved, superseded, any]
+      description: "Filter results by artifact status. Default: approved."
+    limit:
+      type: integer
+      description: "Max number of results to return."
+  required: [query_type]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    artifacts:
+      type: array
+      items:
+        type: object
+    count:
+      type: integer
+    error:
+      type: string
+timeout: 15.0
+retry:
+  max_attempts: 1

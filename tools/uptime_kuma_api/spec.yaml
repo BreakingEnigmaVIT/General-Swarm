@@ -1,0 +1,20 @@
+name: uptime_kuma_api
+description: "Query Uptime Kuma for monitor status and incident history. Read-only. Requires SWARM_UPTIME_KUMA_URL."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [list_monitors, get_monitor, heartbeat_list]
+    monitor_id:
+      type: integer
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 15.0
+retry:
+  max_attempts: 2

@@ -1,0 +1,30 @@
+name: pagerduty_trigger
+description: "Create or resolve PagerDuty incidents. Write operations are prod-risk gated. Requires SWARM_PAGERDUTY_TOKEN."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [pagerduty_write]
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [trigger, resolve, list_incidents]
+    summary:
+      type: string
+      description: "Incident summary"
+    severity:
+      type: string
+      enum: [critical, error, warning, info]
+    routing_key:
+      type: string
+      description: "PagerDuty integration routing key"
+    dedup_key:
+      type: string
+      description: "Deduplication key to resolve a specific incident"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 15.0
+retry:
+  max_attempts: 2

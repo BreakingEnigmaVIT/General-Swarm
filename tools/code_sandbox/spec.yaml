@@ -1,0 +1,31 @@
+name: code_sandbox
+description: "Runs code in an isolated subprocess with declared runtime (python/node/go), CPU/memory cap, time limit, and workspace jail. Returns stdout, stderr, exit code."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: [shell_exec]
+input_schema:
+  type: object
+  properties:
+    code:
+      type: string
+      description: "Code to execute"
+    runtime:
+      type: string
+      enum: [python, node, go, bash]
+      description: "Runtime to use"
+    timeout_seconds:
+      type: integer
+      description: "Max execution time in seconds"
+    working_dir:
+      type: string
+      description: "Working directory path (relative, jailed to project root)"
+    stdin_data:
+      type: string
+      description: "Optional stdin input"
+  required: [code, runtime]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 120.0
+retry:
+  max_attempts: 1

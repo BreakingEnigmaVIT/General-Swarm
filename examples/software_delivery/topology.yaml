@@ -1,0 +1,127 @@
+name: software_delivery
+description: |
+  Full software-delivery swarm running the complete 8-phase lifecycle:
+  Discovery → Planning → Architecture → Build → Quality → Deployment →
+  Post-Launch → Iteration. Chief Orchestrator drives phase transitions;
+  human approval gates protect architecture, planning, quality, deployment,
+  and iteration decisions.
+
+orchestrator: chief_orchestrator
+lifecycle: software_delivery    # references configs/lifecycles/software_delivery.yaml
+
+agents:
+  # Coordination layer
+  - role: chief_orchestrator
+    count: 1
+  - role: memory_agent
+    count: 1
+
+  # Discovery
+  - role: market_research
+    count: 1
+
+  # Planning
+  - role: product_manager
+    count: 1
+  - role: critic
+    count: 1
+
+  # Architecture
+  - role: architecture
+    count: 1
+  - role: security_engineer
+    count: 1
+
+  # Build
+  - role: frontend_engineer
+    count: 1
+  - role: backend_engineer
+    count: 1
+  - role: database_engineer
+    count: 1
+  - role: integration_engineer
+    count: 1
+
+  # Quality
+  - role: qa_engineer
+    count: 1
+  - role: code_reviewer
+    count: 1
+
+  # Deployment
+  - role: devops_engineer
+    count: 1
+  - role: deployment_engineer
+    count: 1
+
+  # Post-Launch
+  - role: sre_engineer
+    count: 1
+  - role: observability
+    count: 1
+  - role: user_feedback
+    count: 1
+
+  # Iteration
+  - role: iteration
+    count: 1
+
+coordination:
+  strategy: hierarchical
+  max_subswarm_size: 5
+  consensus_protocol: weighted
+  debate_max_rounds: 3
+
+budget:
+  max_cost_usd: 20.00
+  warn_at_fraction: 0.75
+
+safety:
+  mode: interactive       # Confirm all write/deploy actions
+  tool_allowlist:
+    - filesystem
+    - shell_exec
+    - git_ops
+    - github_actions_api
+    - docker_build
+    - docker_compose_deploy
+    - kubernetes_apply
+    - test_runner
+    - linter_run
+    - sast_scan
+    - dependency_audit
+    - secret_scan
+    - code_sandbox
+    - repo_inspect
+    - ast_inspect
+    - db_migrate
+    - project_scaffold
+    - mermaid_render
+    - linear_issue_create
+    - notion_page_create
+    - prometheus_query
+    - loki_query
+    - grafana_api
+    - uptime_kuma_api
+    - slo_evaluator
+    - pagerduty_trigger
+    - intercom_query
+    - sentiment_score
+    - text_cluster
+    - changelog_generate
+    - tavily_search
+    - web_search
+    - web_fetch
+    - wiki_lookup
+    - http_request
+    - artifact_write
+    - artifact_read
+    - memory_retrieve
+    - memory_store
+    - write_blackboard
+    - send_message
+    - spawn_agent
+    - self_reflect
+    - human_input
+
+memory_backend: local

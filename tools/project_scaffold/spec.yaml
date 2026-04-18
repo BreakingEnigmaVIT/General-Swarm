@@ -1,0 +1,28 @@
+name: project_scaffold
+description: "Generates an initial project skeleton from a declared template (react_tailwind, fastapi, monorepo). Templates are user-extendable."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: [filesystem_write]
+input_schema:
+  type: object
+  properties:
+    template:
+      type: string
+      enum: [react_tailwind, fastapi, go_fiber, express, monorepo, cli_python]
+      description: "Project template to scaffold"
+    output_dir:
+      type: string
+      description: "Directory to write the scaffold into"
+    project_name:
+      type: string
+      description: "Project name used in package.json / pyproject.toml"
+    overwrite:
+      type: boolean
+      description: "Overwrite existing files"
+  required: [template, output_dir, project_name]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 1

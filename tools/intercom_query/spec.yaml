@@ -1,0 +1,28 @@
+name: intercom_query
+description: "Pull Intercom conversations and tags. PII (names, emails, phones) is automatically redacted before returning data. Requires SWARM_INTERCOM_TOKEN."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [list_conversations, search_conversations, list_tags]
+    query:
+      type: string
+      description: "Search query for conversations"
+    tag_id:
+      type: string
+    limit:
+      type: integer
+    created_after:
+      type: string
+      description: "ISO8601 date filter"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

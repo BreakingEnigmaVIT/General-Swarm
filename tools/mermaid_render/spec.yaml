@@ -1,0 +1,24 @@
+name: mermaid_render
+description: "Renders Mermaid diagram source to SVG and writes both .mmd source and .svg to the workspace. No network required — uses local renderer."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: [filesystem_write]
+input_schema:
+  type: object
+  properties:
+    source:
+      type: string
+      description: "Mermaid diagram source code"
+    output_path:
+      type: string
+      description: "Base path (without extension) to write .mmd and .svg files"
+    diagram_type:
+      type: string
+      description: "Hint for the diagram type (e.g. flowchart, er, sequence)"
+  required: [source, output_path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 30.0
+retry:
+  max_attempts: 1

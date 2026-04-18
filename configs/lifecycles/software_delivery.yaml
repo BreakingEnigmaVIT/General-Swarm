@@ -1,0 +1,189 @@
+# Software Delivery Lifecycle Definition
+# §19.1 — Ordered phases with entry/exit artifact contracts, budget splits, approval gates.
+#
+# Iteration routes back to Planning or Build depending on ReleaseDecision.routing_phase.
+
+name: software_delivery
+description: >
+  End-to-end product delivery lifecycle: from idea to deployed, monitored service
+  with a closed feedback loop.
+
+# Global budget allocation (percentages must sum to ≤ 100)
+budget_allocation:
+  discovery:    8
+  planning:     10
+  architecture: 12
+  build:        30
+  quality:      15
+  deployment:   10
+  post_launch:  10
+  iteration:    5
+
+phases:
+  - id: discovery
+    name: Discovery
+    description: >
+      Understand the market, competitors, and user pain points. Produce a
+      ProductBrief and MarketResearch that ground all downstream decisions.
+    default_agents:
+      - market_research
+      - memory_agent
+    required_input_artifact_types: []       # first phase: only the user goal
+    required_output_artifact_types:
+      - ProductBrief
+      - MarketResearch
+    human_approval_gate: false
+    on_failure: abort
+
+  - id: planning
+    name: Planning
+    description: >
+      Translate research into a structured PRD with prioritised requirements,
+      acceptance criteria, and an explicit out-of-scope list.
+    default_agents:
+      - product_manager
+      - critic
+      - memory_agent
+    required_input_artifact_types:
+      - ProductBrief
+      - MarketResearch
+    required_output_artifact_types:
+      - PRD
+    human_approval_gate: true
+    on_failure: reroute_to_iteration
+
+  - id: architecture
+    name: Architecture
+    description: >
+      Define system components, tech stack, API contracts, and data model.
+      Produce diagrams as Mermaid source artifacts.
+    default_agents:
+      - architecture
+      - security_engineer
+      - memory_agent
+    required_input_artifact_types:
+      - PRD
+    required_output_artifact_types:
+      - ArchitectureDoc
+      - APISpec
+      - DBSchema
+    human_approval_gate: true
+    on_failure: reroute_to_iteration
+
+  - id: build
+    name: Build
+    description: >
+      Generate frontend, backend, database, and integration code. Every change
+      is a CodeChangeSet artifact; no direct commits.
+    default_agents:
+      - frontend_engineer
+      - backend_engineer
+      - database_engineer
+      - integration_engineer
+      - memory_agent
+    required_input_artifact_types:
+      - PRD
+      - ArchitectureDoc
+      - APISpec
+      - DBSchema
+    required_output_artifact_types:
+      - CodeChangeSet
+    human_approval_gate: false
+    on_failure: reroute_to_iteration
+
+  - id: quality
+    name: Quality
+    description: >
+      Run tests, static analysis, dependency audit, secret scan, and code review.
+      Critical/High security findings block progression.
+    default_agents:
+      - qa_engineer
+      - security_engineer
+      - code_reviewer
+      - memory_agent
+    required_input_artifact_types:
+      - CodeChangeSet
+      - PRD
+    required_output_artifact_types:
+      - TestReport
+      - SecurityReport
+      - CodeReviewReport
+    human_approval_gate: true
+    on_failure: reroute_to_iteration
+
+  - id: deployment
+    name: Deployment
+    description: >
+      Generate CI/CD pipelines, build images, and deploy via the declared
+      rollout strategy. All production-touching actions require human approval.
+    default_agents:
+      - devops_engineer
+      - deployment_engineer
+      - memory_agent
+    required_input_artifact_types:
+      - CodeChangeSet
+      - ArchitectureDoc
+    required_output_artifact_types:
+      - DeploymentPlan
+      - DeploymentRecord
+    human_approval_gate: true
+    prod_risk: true
+    on_failure: reroute_to_iteration
+
+  - id: post_launch
+    name: Post-Launch
+    description: >
+      Monitor live service against SLOs. Collect and cluster user feedback.
+      Emit IncidentRecords on SLO breach; trigger rollback with human approval.
+    default_agents:
+      - sre_engineer
+      - observability
+      - user_feedback
+      - memory_agent
+    required_input_artifact_types:
+      - DeploymentRecord
+      - MonitoringConfig
+    required_output_artifact_types:
+      - FeedbackDigest
+    human_approval_gate: false
+    on_failure: reroute_to_iteration
+
+  - id: iteration
+    name: Iteration
+    description: >
+      Analyse signals (feedback, incidents, test failures) and decide: hotfix
+      (back to build), minor update (back to planning), or major rework (back to
+      discovery). Routes through the Chief Orchestrator.
+    default_agents:
+      - iteration
+      - chief_orchestrator
+      - memory_agent
+    required_input_artifact_types:
+      - FeedbackDigest
+    required_output_artifact_types:
+      - ReleaseDecision
+    human_approval_gate: true
+    on_failure: abort
+
+# Transition table — overrides the default linear order.
+# source phase → list of possible target phases (first match wins on condition).
+transitions:
+  - from: quality
+    to: build
+    condition: test_report_failing        # QA agent verdict: tests failing
+
+  - from: quality
+    to: iteration
+    condition: security_blocks            # SecurityReport.blocks_progression = true
+
+  - from: iteration
+    to: discovery
+    condition: release_decision_major_respec
+
+  - from: iteration
+    to: planning
+    condition: release_decision_minor_update
+
+  - from: iteration
+    to: build
+    condition: release_decision_hotfix

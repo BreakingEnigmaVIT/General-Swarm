@@ -1,0 +1,85 @@
+name: software_delivery_lite
+description: |
+  Lightweight software-delivery swarm for small teams or budget-constrained runs.
+  Collapses the full 18-agent topology to 8 agents by combining complementary roles.
+  Runs the same software_delivery lifecycle but with tighter budgets and fewer
+  concurrent workers per phase.
+
+  Role consolidation:
+    chief_orchestrator → also drives iteration decisions
+    product_manager    → doubles as market_research (fused discovery + planning)
+    architecture       → also covers security review
+    backend_engineer   → also covers database and integration layers
+    frontend_engineer  → unchanged
+    qa_engineer        → covers code review + SAST
+    devops_engineer    → covers deployment + SRE + observability
+    user_feedback      → covers post-launch feedback and digest
+
+orchestrator: chief_orchestrator
+lifecycle: software_delivery    # references configs/lifecycles/software_delivery.yaml
+
+agents:
+  - role: chief_orchestrator
+    count: 1
+  - role: memory_agent
+    count: 1
+  - role: product_manager
+    count: 1
+  - role: architecture
+    count: 1
+  - role: frontend_engineer
+    count: 1
+  - role: backend_engineer
+    count: 1
+  - role: qa_engineer
+    count: 1
+  - role: devops_engineer
+    count: 1
+  - role: user_feedback
+    count: 1
+
+coordination:
+  strategy: hierarchical
+  max_subswarm_size: 3
+  consensus_protocol: majority
+  debate_max_rounds: 2
+
+budget:
+  max_cost_usd: 5.00
+  warn_at_fraction: 0.80
+
+safety:
+  mode: interactive
+  tool_allowlist:
+    - filesystem
+    - shell_exec
+    - git_ops
+    - test_runner
+    - linter_run
+    - sast_scan
+    - dependency_audit
+    - secret_scan
+    - code_sandbox
+    - repo_inspect
+    - db_migrate
+    - mermaid_render
+    - prometheus_query
+    - loki_query
+    - slo_evaluator
+    - sentiment_score
+    - text_cluster
+    - changelog_generate
+    - tavily_search
+    - web_search
+    - web_fetch
+    - http_request
+    - artifact_write
+    - artifact_read
+    - memory_retrieve
+    - memory_store
+    - write_blackboard
+    - send_message
+    - self_reflect
+    - human_input
+
+memory_backend: local

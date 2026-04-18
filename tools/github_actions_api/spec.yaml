@@ -1,0 +1,33 @@
+name: github_actions_api
+description: "Trigger GitHub Actions workflows and read run status. Write operations (trigger) gated behind SWARM_GITHUB_TOKEN."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [github_write]
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [trigger, list_runs, get_run, list_workflows]
+    owner:
+      type: string
+    repo:
+      type: string
+    workflow_id:
+      type: string
+      description: "Workflow filename or id"
+    run_id:
+      type: integer
+    ref:
+      type: string
+      description: "Branch/tag ref for trigger"
+    inputs:
+      type: object
+      description: "Workflow dispatch inputs"
+  required: [action, owner, repo]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 30.0
+retry:
+  max_attempts: 2

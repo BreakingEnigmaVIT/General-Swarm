@@ -9,14 +9,18 @@ Responsibilities:
 5. Aggregate results into a final answer
 6. Decide when to use a P2P subswarm vs. single agent assignment
 
-The orchestrator's plan (task graph) is exposed to the observability layer
-before execution so users can inspect and optionally approve it.
+Lifecycle-aware mode (§20):
+  When topology.coordination.strategy == "lifecycle", the orchestrator loads the
+  declared lifecycle YAML and executes phases sequentially, validating artifact
+  contracts at each boundary.  A new _run_lifecycle() method handles this path;
+  the original _run() / hierarchical / p2p paths are untouched.
 """
 
 from __future__ import annotations
 
 import json
 import uuid
+from pathlib import Path
 from typing import Any, Optional
 
 from configs.schema import AgentSpec, TopologySpec
@@ -159,6 +163,12 @@ class SwarmRuntime:
         """Main entry point: run the swarm against a user goal."""
         log.info("swarm_run_start", goal=goal[:80], trace_id=self.trace_id[:8])
 
+        strategy = self.topology.coordination.strategy
+
+        # ── Lifecycle-aware mode (§20) ────────────────────────────────────────
+        if strategy == "lifecycle":
+            return await self._run_lifecycle(goal)
+
         root_task = Task(
             goal=goal,
             constraints=TaskConstraints(
@@ -168,7 +178,6 @@ class SwarmRuntime:
             ),
         )
 
-        strategy = self.topology.coordination.strategy
         available_roles = [slot.role for slot in self.topology.agents]
         available_roles_str = ", ".join(available_roles) if available_roles else "general"
 
@@ -213,6 +222,203 @@ class SwarmRuntime:
             iterations=len(results),
             metadata={"task_graph": task_graph.summary()},
         )
+
+    # ── Lifecycle-aware orchestration (§20) ───────────────────────────────────
+
+    async def _run_lifecycle(self, goal: str) -> TaskResult:
+        """
+        Execute the swarm in lifecycle-aware mode.
+
+        Phases run sequentially; each phase:
+          1. Validates required input artifacts are present in the registry.
+          2. Dispatches the phase's default agents as a sub-DAG.
+          3. Validates required output artifacts were produced.
+          4. Emits PhaseBoundary trace spans.
+          5. Optionally pauses for human approval.
+        """
+        lifecycle_name = self.topology.coordination.lifecycle or "software_delivery"
+        lifecycle = _load_lifecycle(lifecycle_name)
+        approval_gates = self.topology.coordination.approval_gates
+        safety_mode = self.topology.safety.mode
+
+        from memory.artifacts import get_artifact_registry
+        artifact_reg = get_artifact_registry()
+
+        from observability.tracing import get_tracer, Span
+        tracer = get_tracer()
+
+        all_results: list[TaskResult] = []
+        total_usage = TokenUsage()
+        phase_summaries: list[dict] = []
+
+        # Wire artifact registry into the artifact tools
+        _wire_artifact_tools(artifact_reg)
+
+        phases = lifecycle.get("phases", [])
+        budget_alloc = lifecycle.get("budget_allocation", {})
+        total_budget = self.topology.budget.max_cost_usd
+
+        log.info("lifecycle_start", lifecycle=lifecycle_name, phases=len(phases),
+                 trace_id=self.trace_id[:8])
+
+        current_phase_idx = 0
+        while current_phase_idx < len(phases):
+            phase = phases[current_phase_idx]
+            phase_id = phase["id"]
+            phase_name = phase["name"]
+            phase_budget = (
+                total_budget * budget_alloc.get(phase_id, 10) / 100
+                if total_budget else None
+            )
+
+            # ── Emit phase_start span ─────────────────────────────────────────
+            with Span(tracer, f"phase.{phase_id}", "phase_start",
+                      agent_id="chief_orchestrator") as span:
+                span.set(phase_id=phase_id, phase_name=phase_name)
+
+            log.info("phase_start", phase=phase_id, trace_id=self.trace_id[:8])
+
+            # ── Validate input artifacts ──────────────────────────────────────
+            required_inputs = phase.get("required_input_artifact_types", [])
+            if required_inputs:
+                missing = await _check_artifacts(artifact_reg, required_inputs)
+                if missing:
+                    log.error("phase_input_missing", phase=phase_id, missing=missing)
+                    return TaskResult(
+                        output=None,
+                        success=False,
+                        error=(
+                            f"Phase '{phase_id}' missing required input artifacts: {missing}. "
+                            "Previous phase may not have completed successfully."
+                        ),
+                        cost=self._ledger.total_cost,
+                        token_usage=total_usage,
+                        iterations=len(all_results),
+                    )
+
+            # ── Build and run per-phase sub-DAG ───────────────────────────────
+            agent_roles = phase.get("default_agents", [])
+            phase_goal = (
+                f"[Phase: {phase_name}] {goal}\n\n"
+                f"Produce the following artifacts: "
+                f"{', '.join(phase.get('required_output_artifact_types', []))}"
+            )
+
+            phase_task = Task(
+                goal=phase_goal,
+                constraints=TaskConstraints(
+                    budget=phase_budget,
+                    timeout=600.0,
+                    max_iterations=50,
+                ),
+                input_payload={"phase_id": phase_id, "lifecycle": lifecycle_name},
+            )
+
+            phase_results = await self._run_phase_agents(agent_roles, phase_task)
+            all_results.extend(phase_results)
+            for r in phase_results:
+                total_usage = total_usage + r.token_usage
+
+            phase_success = any(r.success for r in phase_results)
+
+            # ── Validate output artifacts ─────────────────────────────────────
+            required_outputs = phase.get("required_output_artifact_types", [])
+            output_missing: list[str] = []
+            if required_outputs and phase_success:
+                output_missing = await _check_artifacts(artifact_reg, required_outputs)
+
+            # ── Emit phase_end span ───────────────────────────────────────────
+            with Span(tracer, f"phase.{phase_id}", "phase_end",
+                      agent_id="chief_orchestrator") as span:
+                span.set(
+                    phase_id=phase_id,
+                    success=phase_success,
+                    output_artifacts_missing=output_missing,
+                )
+
+            phase_summaries.append({
+                "phase_id": phase_id,
+                "success": phase_success,
+                "output_missing": output_missing,
+                "result_count": len(phase_results),
+            })
+
+            # ── Handle phase failure ──────────────────────────────────────────
+            if not phase_success or output_missing:
+                on_failure = phase.get("on_failure", "abort")
+                log.warning("phase_failed", phase=phase_id, on_failure=on_failure,
+                            output_missing=output_missing)
+                if on_failure == "abort":
+                    return TaskResult(
+                        output=None,
+                        success=False,
+                        error=f"Phase '{phase_id}' failed. Missing outputs: {output_missing}",
+                        cost=self._ledger.total_cost,
+                        token_usage=total_usage,
+                        iterations=len(all_results),
+                        metadata={"phases": phase_summaries},
+                    )
+                # reroute_to_iteration — jump to the iteration phase
+                iteration_idx = next(
+                    (i for i, p in enumerate(phases) if p["id"] == "iteration"), None
+                )
+                if iteration_idx is not None:
+                    current_phase_idx = iteration_idx
+                    continue
+
+            # ── Human approval gate ───────────────────────────────────────────
+            has_gate = phase.get("human_approval_gate", False)
+            if has_gate and approval_gates and safety_mode == "interactive":
+                approved = await _human_phase_gate(phase_id, phase_name, self.trace_id)
+                if not approved:
+                    with Span(tracer, f"phase.{phase_id}", "phase_gate_rejected",
+                              agent_id="chief_orchestrator") as span:
+                        span.set(phase_id=phase_id)
+                    return TaskResult(
+                        output=None,
+                        success=False,
+                        error=f"Phase '{phase_id}' rejected by human at approval gate.",
+                        cost=self._ledger.total_cost,
+                        token_usage=total_usage,
+                        iterations=len(all_results),
+                        metadata={"phases": phase_summaries},
+                    )
+                with Span(tracer, f"phase.{phase_id}", "phase_gate_approved",
+                          agent_id="chief_orchestrator") as span:
+                    span.set(phase_id=phase_id)
+
+            current_phase_idx += 1
+
+        # ── Final aggregation ─────────────────────────────────────────────────
+        successful = [r for r in all_results if r.success]
+        combined_output = "\n\n".join(str(r.output) for r in successful if r.output)
+
+        return TaskResult(
+            output=combined_output or "Lifecycle completed.",
+            success=bool(successful),
+            token_usage=total_usage,
+            cost=self._ledger.total_cost,
+            iterations=len(all_results),
+            metadata={"lifecycle": lifecycle_name, "phases": phase_summaries},
+        )
+
+    async def _run_phase_agents(self, agent_roles: list[str], phase_task: Task) -> list[TaskResult]:
+        """Run each agent role in the phase sequentially (simple ordered dispatch)."""
+        import asyncio
+        results: list[TaskResult] = []
+        for role in agent_roles:
+            # Skip roles not registered in the topology (graceful degradation)
+            registered = [slot.role for slot in self.topology.agents]
+            if role not in registered:
+                log.debug("phase_agent_skipped", role=role, reason="not_in_topology")
+                continue
+            try:
+                result = await self._spawn_agent_for_goal(role, phase_task.goal)
+                results.append(result)
+            except Exception as exc:
+                log.error("phase_agent_error", role=role, error=str(exc))
+                results.append(TaskResult(output=None, success=False, error=str(exc)))
+        return results
 
     async def _decompose(
         self, goal: str, roles_str: str, root_task: Task
@@ -287,3 +493,84 @@ class SwarmRuntime:
             max_rounds=self.topology.coordination.debate_max_rounds,
         )
         return await coordinator.run(task)
+
+
+# ── Lifecycle helpers (module-level, not on the runtime) ──────────────────────
+
+def _load_lifecycle(name: str) -> dict:
+    """Load a lifecycle YAML from configs/lifecycles/<name>.yaml."""
+    import yaml
+
+    search_paths = [
+        Path(f"configs/lifecycles/{name}.yaml"),
+        Path(f"./configs/lifecycles/{name}.yaml"),
+        Path(__file__).parent.parent / "configs" / "lifecycles" / f"{name}.yaml",
+    ]
+    for p in search_paths:
+        if p.exists():
+            with p.open(encoding="utf-8") as fh:
+                return yaml.safe_load(fh)
+    raise FileNotFoundError(
+        f"Lifecycle '{name}' not found. Searched: {[str(p) for p in search_paths]}"
+    )
+
+
+async def _check_artifacts(registry: Any, required_types: list[str]) -> list[str]:
+    """Return list of artifact types that are missing (no approved instance)."""
+    missing = []
+    for art_type in required_types:
+        result = await registry.get_latest_by_type(art_type, status="approved")
+        # Also accept draft artifacts so partially-completed phases can progress
+        if result is None:
+            result = await registry.get_latest_by_type(art_type, status="draft")
+        if result is None:
+            missing.append(art_type)
+    return missing
+
+
+def _wire_artifact_tools(registry: Any) -> None:
+    """Inject the ArtifactRegistry into artifact_write / artifact_read tool handlers."""
+    try:
+        import tools.artifact_write.handler as aw
+        aw.set_registry(registry)
+    except Exception:
+        pass
+    try:
+        import tools.artifact_read.handler as ar
+        ar.set_registry(registry)
+    except Exception:
+        pass
+
+
+async def _human_phase_gate(phase_id: str, phase_name: str, trace_id: str) -> bool:
+    """
+    Pause for interactive human approval at a phase gate.
+
+    Returns True if approved, False if rejected.
+    In non-TTY environments (CI), auto-approves and logs a warning.
+    """
+    import sys
+    log.info(
+        "phase_gate_waiting",
+        phase=phase_id,
+        trace_id=trace_id[:8],
+        prompt=f"Approve phase '{phase_name}'?",
+    )
+
+    if not sys.stdin.isatty():
+        log.warning("phase_gate_auto_approved", phase=phase_id, reason="non_interactive")
+        return True
+
+    try:
+        from rich.console import Console
+        console = Console()
+        console.print(
+            f"\n[bold yellow]Phase Gate:[/bold yellow] '{phase_name}' is ready for review.\n"
+            f"  Trace: {trace_id[:8]}\n"
+            f"  Approve to continue, reject to stop the run.\n"
+        )
+        answer = console.input("  Approve? [y/N] ").strip().lower()
+        return answer in ("y", "yes")
+    except Exception:
+        answer = input(f"\n[Phase Gate] Approve '{phase_name}'? [y/N] ").strip().lower()
+        return answer in ("y", "yes")

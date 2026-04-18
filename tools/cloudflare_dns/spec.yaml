@@ -1,0 +1,36 @@
+name: cloudflare_dns
+description: "DNS record CRUD via Cloudflare API. All writes are prod-risk gated and require SWARM_CLOUDFLARE_TOKEN."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [cloudflare_write]
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [list, create, update, delete]
+    zone_id:
+      type: string
+    record_type:
+      type: string
+      enum: [A, AAAA, CNAME, MX, TXT, NS]
+    name:
+      type: string
+      description: "DNS record name (e.g. api.example.com)"
+    content:
+      type: string
+      description: "Record value"
+    ttl:
+      type: integer
+    proxied:
+      type: boolean
+    record_id:
+      type: string
+      description: "Required for update/delete"
+  required: [action, zone_id]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

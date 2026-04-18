@@ -1,0 +1,29 @@
+name: docker_compose_deploy
+description: "Start/stop/restart services via docker compose. Primarily for local and staging environments."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [docker_write]
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [up, down, restart, ps, logs, pull]
+    compose_file:
+      type: string
+      description: "Path to docker-compose.yml (default: docker-compose.yml)"
+    services:
+      type: array
+      items:
+        type: string
+      description: "Specific services to target (empty = all)"
+    detach:
+      type: boolean
+      description: "Run in detached mode (default true)"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 120.0
+retry:
+  max_attempts: 1

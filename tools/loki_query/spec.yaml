@@ -1,0 +1,30 @@
+name: loki_query
+description: "Execute LogQL queries against a Loki instance. Read-only. Requires SWARM_LOKI_URL."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+      description: "LogQL expression"
+    start:
+      type: string
+      description: "Start time (RFC3339 or Unix ns)"
+    end:
+      type: string
+      description: "End time"
+    limit:
+      type: integer
+      description: "Max log lines to return"
+    direction:
+      type: string
+      enum: [forward, backward]
+  required: [query]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

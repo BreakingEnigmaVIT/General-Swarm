@@ -1,0 +1,24 @@
+name: sast_scan
+description: "Static analysis security testing. Uses Semgrep (multi-language) with Bandit fallback for Python. Returns structured findings with severity."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "File or directory to scan (relative to project root)"
+    ruleset:
+      type: string
+      description: "Semgrep ruleset (default: p/owasp-top-ten)"
+    language:
+      type: string
+      enum: [auto, python, javascript, typescript, go, java]
+  required: [path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 120.0
+retry:
+  max_attempts: 1

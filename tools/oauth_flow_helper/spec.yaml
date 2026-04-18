@@ -1,0 +1,52 @@
+name: oauth_flow_helper
+description: "OAuth 2.0 helper — build authorization URLs, exchange authorization codes for tokens, or refresh existing tokens."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: []
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum: [build_auth_url, exchange_code, refresh_token]
+      description: "Operation to perform"
+    auth_endpoint:
+      type: string
+      description: "Authorization endpoint URL (required for build_auth_url)"
+    token_endpoint:
+      type: string
+      description: "Token endpoint URL (required for exchange_code and refresh_token)"
+    redirect_uri:
+      type: string
+      description: "OAuth redirect URI"
+    client_id:
+      type: string
+      description: "OAuth client ID (falls back to OAUTH_CLIENT_ID env var)"
+    client_secret:
+      type: string
+      description: "OAuth client secret (falls back to OAUTH_CLIENT_SECRET env var)"
+    scopes:
+      type: array
+      items:
+        type: string
+      description: "List of OAuth scopes"
+    code:
+      type: string
+      description: "Authorization code (for exchange_code action)"
+    refresh_token:
+      type: string
+      description: "Refresh token (for refresh_token action)"
+    state:
+      type: string
+      description: "CSRF state parameter (auto-generated if omitted)"
+    extra_params:
+      type: object
+      additionalProperties: true
+      description: "Additional query parameters to add to the auth URL"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,31 @@
+name: linear_issue_create
+description: "Creates or updates Linear issues from PRD requirements. Skipped gracefully if SWARM_LINEAR_TOKEN is unset."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [linear_write]
+input_schema:
+  type: object
+  properties:
+    title:
+      type: string
+    description:
+      type: string
+    priority:
+      type: integer
+      description: "1=urgent, 2=high, 3=medium, 4=low"
+    team_id:
+      type: string
+    label_names:
+      type: array
+      items:
+        type: string
+    issue_id:
+      type: string
+      description: "If set, update existing issue instead of creating"
+  required: [title]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 20.0
+retry:
+  max_attempts: 2

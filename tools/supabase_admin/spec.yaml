@@ -1,0 +1,35 @@
+name: supabase_admin
+description: "Supabase Management API — list/inspect projects, list tables, run SQL queries, list Edge Functions and secrets. Requires SUPABASE_ACCESS_TOKEN."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: []
+input_schema:
+  type: object
+  properties:
+    action:
+      type: string
+      enum:
+        - list_projects
+        - get_project
+        - list_tables
+        - run_sql
+        - list_functions
+        - get_project_settings
+        - list_secrets
+      description: "Operation to perform"
+    project_ref:
+      type: string
+      description: "Supabase project reference ID (falls back to SUPABASE_PROJECT_REF env var)"
+    access_token:
+      type: string
+      description: "Supabase personal access token (falls back to SUPABASE_ACCESS_TOKEN env var)"
+    sql:
+      type: string
+      description: "SQL query to run (required for run_sql action)"
+  required: [action]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 30.0
+retry:
+  max_attempts: 1

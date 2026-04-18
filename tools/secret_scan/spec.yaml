@@ -1,0 +1,25 @@
+name: secret_scan
+description: "Scans file tree or git diff for leaked secrets: AWS keys, GCP credentials, private keys, high-entropy strings, API tokens."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "Directory or file to scan (relative to project root)"
+    scan_mode:
+      type: string
+      enum: [full_tree, git_diff, file]
+      description: "What to scan"
+    diff_ref:
+      type: string
+      description: "Git ref for diff mode (e.g. HEAD~1)"
+  required: [path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 60.0
+retry:
+  max_attempts: 1

@@ -1,0 +1,24 @@
+name: linter_run
+description: "Dispatches to Ruff (Python), ESLint (JS/TS), or golangci-lint (Go). Returns structured findings with file/line/severity."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    path:
+      type: string
+      description: "File or directory to lint (relative to project root)"
+    runtime:
+      type: string
+      enum: [auto, python, node, go]
+    fix:
+      type: boolean
+      description: "Auto-fix fixable issues (default false)"
+  required: [path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 60.0
+retry:
+  max_attempts: 1

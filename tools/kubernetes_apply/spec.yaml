@@ -1,0 +1,32 @@
+name: kubernetes_apply
+description: "Apply Kubernetes manifests with dry-run + diff preview. Explicit environment target required. Production apply is prod-risk gated."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: [kubernetes_write]
+input_schema:
+  type: object
+  properties:
+    manifest_path:
+      type: string
+      description: "Path to manifest file or directory (relative to project root)"
+    environment:
+      type: string
+      enum: [local, staging, production]
+    dry_run:
+      type: boolean
+      description: "Preview changes without applying (always runs diff first)"
+    namespace:
+      type: string
+    context:
+      type: string
+      description: "kubectl context to use"
+    force:
+      type: boolean
+      description: "Force apply even if dry-run shows deletions"
+  required: [manifest_path, environment]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 120.0
+retry:
+  max_attempts: 1
