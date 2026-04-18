@@ -93,13 +93,41 @@ def _load_tool_handler(tool_dir: Path, spec: ToolSpec) -> ToolHandler:
     if not handler_path.exists():
         raise FileNotFoundError(f"No handler.py found in {tool_dir}")
 
-    module_name = f"_tool_{spec.name.replace('-', '_')}"
-    spec_ = importlib.util.spec_from_file_location(module_name, handler_path)
-    if spec_ is None:
-        raise ImportError(f"Cannot load {handler_path}")
-    module = importlib.util.module_from_spec(spec_)
-    sys.modules[module_name] = module
-    spec_.loader.exec_module(module)  # type: ignore[union-attr]
+    # Load under the canonical dotted name (tools.<name>.handler) AND register
+    # the parent package (tools.<name>) so that a later
+    # `import tools.<name>.handler` finds the same module object in sys.modules
+    # rather than doing a fresh file load.  This is critical for module-level
+    # singletons (_factory, _memory, etc.) set via set_X() helpers at runtime.
+    pkg_name = f"tools.{spec.name.replace('-', '_')}"
+    canonical_name = f"{pkg_name}.handler"
+
+    if canonical_name in sys.modules:
+        module = sys.modules[canonical_name]
+    else:
+        # Ensure the parent package entry exists so Python's import machinery
+        # doesn't choke when resolving the dotted name later.
+        if pkg_name not in sys.modules:
+            pkg_init = tool_dir / "__init__.py"
+            pkg_spec = importlib.util.spec_from_file_location(
+                pkg_name, pkg_init if pkg_init.exists() else None,
+                submodule_search_locations=[str(tool_dir)],
+            )
+            if pkg_spec is not None:
+                pkg_mod = importlib.util.module_from_spec(pkg_spec)
+                sys.modules[pkg_name] = pkg_mod
+                try:
+                    pkg_spec.loader.exec_module(pkg_mod)  # type: ignore[union-attr]
+                except Exception:
+                    pass  # empty __init__.py is fine
+
+        private_name = f"_tool_{spec.name.replace('-', '_')}"
+        spec_ = importlib.util.spec_from_file_location(canonical_name, handler_path)
+        if spec_ is None:
+            raise ImportError(f"Cannot load {handler_path}")
+        module = importlib.util.module_from_spec(spec_)
+        sys.modules[canonical_name] = module
+        sys.modules[private_name] = module
+        spec_.loader.exec_module(module)  # type: ignore[union-attr]
 
     if hasattr(module, "handler"):
         return module.handler

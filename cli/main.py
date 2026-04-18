@@ -75,7 +75,7 @@ def _bootstrap(cfg: "SwarmConfig") -> tuple:  # type: ignore[name-defined]
     return tr, ar, pr
 
 
-def _build_runtime(cfg, topology_path: Optional[str]):
+def _build_runtime(cfg, topology_path: Optional[str], deploy: bool = True):
     from configs.loader import load_topology_spec
     from configs.schema import TopologySpec, AgentSlot
     from coordination.bus import create_bus
@@ -116,6 +116,7 @@ def _build_runtime(cfg, topology_path: Optional[str]):
         ledger=ledger,
         deployment_mode=cfg.deployment_mode,
         redis_url=cfg.redis_url,
+        deploy=deploy,
     )
     return runtime, ledger
 
@@ -749,6 +750,8 @@ def _write_phase_gate_decision(
 @click.option("--trace-dir", default="./traces", show_default=True)
 @click.option("--memory-dir", default="./memory_store", show_default=True)
 @click.option("--approve-all", is_flag=True, help="Auto-approve all phase gates (CI mode)")
+@click.option("--deploy/--no-deploy", default=False, show_default=True,
+              help="Include deployment phases (deployment + post_launch). Omit to stop at quality and go straight to feedback/iteration.")
 @click.option("--budget", default=None, type=float, help="Max spend in USD")
 @click.option("--json", "output_json", is_flag=True)
 def workforce(
@@ -762,6 +765,7 @@ def workforce(
     trace_dir: str,
     memory_dir: str,
     approve_all: bool,
+    deploy: bool,
     budget: Optional[float],
     output_json: bool,
 ) -> None:
@@ -808,7 +812,7 @@ def workforce(
     from memory.artifacts import reset_artifact_registry
     reset_artifact_registry(persist_dir=memory_dir)
 
-    runtime, ledger = _build_runtime(cfg, topology)
+    runtime, ledger = _build_runtime(cfg, topology, deploy=deploy)
     runtime.topology = topo
 
     console.print(Panel(
@@ -816,7 +820,8 @@ def workforce(
         f"[bold]Goal:[/bold] {goal}\n"
         f"[dim]Lifecycle:[/dim] {topo.coordination.lifecycle or 'software_delivery'}\n"
         f"[dim]Trace:[/dim]    {runtime.trace_id[:8]}…\n"
-        f"[dim]Gates:[/dim]    {'auto-approved' if approve_all else 'interactive'}",
+        f"[dim]Gates:[/dim]    {'auto-approved' if approve_all else 'interactive'}\n"
+        f"[dim]Deploy:[/dim]   {'enabled' if deploy else 'skipped (use --deploy to include)'}",
         title="[bold]AI Digital Workforce[/bold]",
         border_style="magenta",
     ))

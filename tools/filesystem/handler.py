@@ -9,6 +9,12 @@ from core.exceptions import SafetyError
 from tools.base import ToolHandler
 
 _CWD = Path.cwd()
+_BUILT = _CWD / "built"
+
+# Paths that are always read-only project internals — never rerouted to built/
+_INTERNAL_PREFIXES = ("traces", "memory_store", "configs", "agents", "tools",
+                      "coordination", "core", "providers", "observability",
+                      "memory", "api", "cli", "tests", "built")
 
 
 def _safe_path(rel: str) -> Path:
@@ -18,10 +24,31 @@ def _safe_path(rel: str) -> Path:
     return p
 
 
+def _build_path(rel: str) -> Path:
+    """For write/append operations: redirect bare paths into built/ unless
+    they already target an internal swarm directory or built/ itself."""
+    parts = Path(rel).parts
+    first = parts[0] if parts else ""
+    if first in _INTERNAL_PREFIXES or rel.startswith("/"):
+        return _safe_path(rel)
+    # Already inside built/
+    if first == "built":
+        return _safe_path(rel)
+    # Redirect to built/
+    redirected = str(Path("built") / rel)
+    return _safe_path(redirected)
+
+
 class FilesystemHandler(ToolHandler):
     async def _run(self, inputs: dict[str, Any]) -> dict[str, Any]:
         op = inputs["operation"]
-        path = _safe_path(inputs["path"])
+        raw_path = inputs["path"]
+
+        # Write operations go into built/; reads/lists/searches use the path as-is
+        if op in ("write", "append", "delete"):
+            path = _build_path(raw_path)
+        else:
+            path = _safe_path(raw_path)
 
         if op == "read":
             if not path.exists():

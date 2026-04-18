@@ -85,6 +85,7 @@ class SwarmRuntime:
         trace_id: Optional[str] = None,
         deployment_mode: str = "local",
         redis_url: str = "redis://localhost:6379",
+        deploy: bool = True,
     ) -> None:
         self.topology = topology
         self._provider = provider
@@ -96,6 +97,7 @@ class SwarmRuntime:
         self.trace_id = trace_id or str(uuid.uuid4())
         self._deployment_mode = deployment_mode
         self._redis_url = redis_url
+        self._deploy = deploy
 
         # Wire runtime-injectable tools
         self._wire_tools()
@@ -111,20 +113,31 @@ class SwarmRuntime:
         if self._longterm:
             ms.set_memory(self._longterm)
             mr.set_memory(self._longterm)
-        sr.set_provider(self._provider, self.topology.agents[0].model_override
-                        if self.topology.agents else "llama-3.3-70b-versatile")
+        # Resolve the best available model for self_reflect: prefer topology
+        # slot override, then fall back to the first registered agent spec's
+        # model, then a safe default.
+        _reflect_model = (
+            (self.topology.agents[0].model_override if self.topology.agents else None)
+            or next((s.model for s in self._agent_specs.values() if s.model), None)
+            or "llama-3.3-70b-versatile"
+        )
+        sr.set_provider(self._provider, _reflect_model)
         sa.set_factory(self._spawn_agent_for_goal)
 
     def _make_agent(self, role: str, agent_id: Optional[str] = None) -> Agent:
         spec = self._agent_specs.get(role)
         if spec is None:
-            # Fallback: create a generic spec
+            # Fallback: create a generic spec — resolve a non-None model
+            _fallback_model = (
+                (self.topology.agents[0].model_override if self.topology.agents else None)
+                or next((s.model for s in self._agent_specs.values() if s.model), None)
+                or "llama-3.3-70b-versatile"
+            )
             from configs.schema import AgentSpec as AS
             spec = AS(
                 name=role, role=role,
                 system_prompt=f"You are a {role} agent. Complete the assigned task thoroughly.",
-                model=self.topology.agents[0].model_override if self.topology.agents
-                      else "llama-3.3-70b-versatile",
+                model=_fallback_model,
             )
 
         # Apply per-slot overrides from topology
@@ -274,6 +287,19 @@ class SwarmRuntime:
         phases = lifecycle.get("phases", [])
         budget_alloc = lifecycle.get("budget_allocation", {})
         total_budget = self.topology.budget.max_cost_usd
+
+        # When deploy=False, strip deployment phases and relax iteration's
+        # required inputs (FeedbackDigest won't be produced without post_launch).
+        if not self._deploy:
+            phases = [p for p in phases if not p.get("skip_without_deploy", False)]
+            phases = [
+                {**p, "required_input_artifact_types": []}
+                if p["id"] == "iteration" else p
+                for p in phases
+            ]
+            log.info("lifecycle_deploy_skipped",
+                     skipped=["deployment", "post_launch"],
+                     note="use --deploy to include deployment phases")
 
         log.info("lifecycle_start", lifecycle=lifecycle_name, phases=len(phases),
                  trace_id=self.trace_id[:8])

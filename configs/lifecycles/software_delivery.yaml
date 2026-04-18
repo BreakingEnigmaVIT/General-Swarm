@@ -11,13 +11,14 @@ description: >
 # Global budget allocation (percentages must sum to ≤ 100)
 budget_allocation:
   discovery:    8
-  planning:     10
-  architecture: 12
-  build:        30
-  quality:      15
+  planning:     8
+  architecture: 10
+  build:        25
+  live_test:    10
+  quality:      12
   deployment:   10
   post_launch:  10
-  iteration:    5
+  iteration:    7
 
 phases:
   - id: discovery
@@ -91,6 +92,21 @@ phases:
     human_approval_gate: false
     on_failure: abort
 
+  - id: live_test
+    name: Live Test
+    description: >
+      Start the built backend in a venv and the frontend dev server, run live
+      CRUD smoke tests, and loop through the debug agent until all checks pass
+      or 3 fix cycles are exhausted.
+    default_agents:
+      - live_test
+    required_input_artifact_types:
+      - CodeChangeSet
+    required_output_artifact_types:
+      - LiveTestReport
+    human_approval_gate: false
+    on_failure: abort
+
   - id: quality
     name: Quality
     description: >
@@ -128,6 +144,7 @@ phases:
       - DeploymentRecord
     human_approval_gate: true
     prod_risk: true
+    skip_without_deploy: true   # skipped when --no-deploy (default)
     on_failure: abort
 
   - id: post_launch
@@ -146,6 +163,7 @@ phases:
     required_output_artifact_types:
       - FeedbackDigest
     human_approval_gate: false
+    skip_without_deploy: true   # skipped when --no-deploy (default)
     on_failure: abort
 
   - id: iteration

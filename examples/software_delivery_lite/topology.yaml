@@ -37,6 +37,10 @@ agents:
     count: 1
   - role: user_feedback
     count: 1
+  - role: live_test
+    count: 1
+  - role: debug_agent
+    count: 1
 
 coordination:
   strategy: hierarchical
@@ -45,7 +49,7 @@ coordination:
   debate_max_rounds: 2
 
 budget:
-  max_cost_usd: 5.00
+  max_cost_usd: 8.00
   warn_at_fraction: 0.80
 
 safety:
@@ -81,5 +85,6 @@ safety:
     - send_message
     - self_reflect
     - human_input
+    - spawn_agent
 
 memory_backend: local

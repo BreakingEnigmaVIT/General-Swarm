@@ -40,6 +40,7 @@ class ArtifactType(str, Enum):
     incident_record = "IncidentRecord"
     feedback_digest = "FeedbackDigest"
     release_decision = "ReleaseDecision"
+    live_test_report = "LiveTestReport"
 
 
 # ── Base model ────────────────────────────────────────────────────────────────
@@ -349,6 +350,32 @@ class ReleaseDecision(ArtifactBase):
         use_enum_values = True
 
 
+class LiveTestEndpointResult(BaseModel):
+    method: str
+    path: str
+    status_code: int = 0
+    passed: bool = False
+    error: str = ""
+
+
+class LiveTestReport(ArtifactBase):
+    """Result of the live integration test phase (backend + frontend up + CRUD verified)."""
+    artifact_type: ArtifactType = ArtifactType.live_test_report
+    backend_url: str = ""
+    frontend_url: str = ""
+    backend_up: bool = False
+    frontend_up: bool = False
+    endpoints_tested: list[LiveTestEndpointResult] = Field(default_factory=list)
+    pass_count: int = 0
+    fail_count: int = 0
+    all_passed: bool = False
+    debug_cycles: int = 0   # how many debug→fix rounds were needed
+    error_summary: str = ""
+
+    class Config:
+        use_enum_values = True
+
+
 # ── Type registry (name → class) ──────────────────────────────────────────────
 
 ARTIFACT_REGISTRY: dict[str, Type[ArtifactBase]] = {
@@ -368,4 +395,5 @@ ARTIFACT_REGISTRY: dict[str, Type[ArtifactBase]] = {
     ArtifactType.incident_record.value: IncidentRecord,
     ArtifactType.feedback_digest.value: FeedbackDigest,
     ArtifactType.release_decision.value: ReleaseDecision,
+    ArtifactType.live_test_report.value: LiveTestReport,
 }

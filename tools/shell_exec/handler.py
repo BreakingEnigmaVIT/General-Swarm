@@ -21,6 +21,10 @@ _DENYLIST = [
     "chmod 777 /",
     "wget http",
     "curl http",
+    "taskkill /im ",   # kills ALL processes by image name — use /pid instead
+    "taskkill /f /im ", # same with force flag
+    "killall ",        # kills all processes matching a name — use kill <pid> instead
+    "pkill ",          # kills all processes matching a pattern — use kill <pid> instead
 ]
 
 
