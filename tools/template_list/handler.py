@@ -190,8 +190,14 @@ class TemplateListHandler(ToolHandler):
             )
 
         repos_payload = [
-            {"name": "boilerplate-fastapi-postgres", "html_url": "https://github.com/o/boilerplate-fastapi-postgres"},
-            {"name": "boilerplate-nextjs-app-router", "html_url": "https://github.com/o/boilerplate-nextjs-app-router"},
+            {
+                "name": "boilerplate-fastapi-postgres",
+                "html_url": "https://github.com/BreakingEnigmaVIT/boilerplate-fastapi-postgres",
+            },
+            {
+                "name": "boilerplate-nextjs-app-router",
+                "html_url": "https://github.com/BreakingEnigmaVIT/boilerplate-nextjs-app-router",
+            },
         ]
 
         async def fake_get(url: str, headers: Any = None, **kwargs: Any) -> MagicMock:
@@ -221,7 +227,10 @@ class TemplateListHandler(ToolHandler):
         inst.__aenter__ = AsyncMock(return_value=inst)
         inst.__aexit__ = AsyncMock(return_value=False)
 
-        with patch.dict(os.environ, {"SWARM_TEMPLATE_ORG": "test-org", "SWARM_GITHUB_TOKEN": "fake-token"}):
+        with patch.dict(
+            os.environ,
+            {"SWARM_TEMPLATE_ORG": "BreakingEnigmaVIT", "SWARM_GITHUB_TOKEN": "fake-token"},
+        ):
             with patch("httpx.AsyncClient", return_value=inst):
                 out = await self._run({"include_stale": True})
         if out.get("total") != 2:

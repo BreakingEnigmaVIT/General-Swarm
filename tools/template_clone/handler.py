@@ -259,7 +259,7 @@ class TemplateCloneHandler(ToolHandler):
 
             with patch.dict(
                 os.environ,
-                {"SWARM_TEMPLATE_ORG": "test-org", "SWARM_GITHUB_TOKEN": "fake-token"},
+                {"SWARM_TEMPLATE_ORG": "BreakingEnigmaVIT", "SWARM_GITHUB_TOKEN": "fake-token"},
             ):
                 with patch("tools.template_clone.handler.subprocess.run", side_effect=_fake_run):
                     out = await self._run(
