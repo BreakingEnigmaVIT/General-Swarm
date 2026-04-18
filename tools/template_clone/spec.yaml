@@ -1,5 +1,5 @@
 name: template_clone
-description: "Clone a boilerplate template repository into the agent workspace. Substitutes template params into configure-mode files. Returns a TemplateManifest describing every file and its mode (locked/configure/extend). Agents read the manifest to know which files they may modify. Never call this without first calling template_list to confirm the template id exists and is not stale."
+description: "Clone a boilerplate template repository from SWARM_TEMPLATE_ORG (e.g. BreakingEnigmaVIT — https://github.com/BreakingEnigmaVIT) into the agent workspace. Substitutes template params into configure-mode files. Returns a TemplateManifest describing every file and its mode (locked/configure/extend). Agents read the manifest to know which files they may modify. Never call this without first calling template_list to confirm the template id exists and is not stale."
 version: "1.0.0"
 side_effect_level: mutates-local
 permissions: []

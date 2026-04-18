@@ -1,5 +1,5 @@
 name: template_list
-description: "List all available boilerplate templates from the GitHub template org. Returns template metadata including id, description, stack tags, last CI pass date, and stale status. Agents call this first to pick the right template before calling template_clone."
+description: "List all available boilerplate templates from the GitHub org in SWARM_TEMPLATE_ORG (e.g. BreakingEnigmaVIT — https://github.com/BreakingEnigmaVIT). Returns template metadata including id, description, stack tags, last CI pass date, and stale status. Agents call this first to pick the right template before calling template_clone."
 version: "1.0.0"
 side_effect_level: read-only
 permissions: []
