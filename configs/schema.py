@@ -97,6 +97,7 @@ class AgentSpec(BaseModel):
     memory_policy: MemoryPolicy = Field(default_factory=MemoryPolicy)
     termination: TerminationPolicy = Field(default_factory=TerminationPolicy)
     hooks: dict[str, str] = Field(default_factory=dict)
+    resource_profile: Optional[str] = None
 
     @field_validator("temperature")
     @classmethod

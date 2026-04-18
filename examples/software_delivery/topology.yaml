@@ -57,6 +57,8 @@ agents:
   # Post-Launch
   - role: sre_engineer
     count: 1
+  - role: gke_monitor
+    count: 1
   - role: observability
     count: 1
   - role: user_feedback
@@ -125,5 +127,9 @@ safety:
     - human_input
     - cloud_run_deploy
     - gcloud_cli
+    - k8s_rollout_status
+    - k8s_rollout_undo
+    - keda_queue_depth
+    - keda_scaledobject_apply
 
 memory_backend: local

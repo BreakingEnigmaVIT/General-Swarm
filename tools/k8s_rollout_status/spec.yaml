@@ -1,0 +1,21 @@
+name: k8s_rollout_status
+description: "Report Kubernetes deployment rollout status (read-only)."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    deployment:
+      type: string
+      description: "Deployment name"
+    namespace:
+      type: string
+      description: "Kubernetes namespace"
+  required: [deployment, namespace]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 60.0
+retry:
+  max_attempts: 1

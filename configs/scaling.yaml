@@ -1,0 +1,15 @@
+# KEDA / worker scaling configuration (reference for manifests and agents).
+roles:
+  gke_monitor:
+    type: ScaledJob
+    max_replicas: 2
+    polling_interval: 30
+    cooldown_period: 60
+
+additional_triggers:
+  gke_monitor:
+    - type: cron
+      timezone: UTC
+      start: "*/15 * * * *"
+      end: "*/15 * * * *"
+      desiredReplicas: "1"

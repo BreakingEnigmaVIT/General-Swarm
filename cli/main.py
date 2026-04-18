@@ -11,6 +11,7 @@ Commands:
   swarm cost [<trace-id>|--since <date>]
   swarm dashboard
   swarm doctor
+  swarm auth setup|show|clear
 """
 
 from __future__ import annotations
@@ -26,6 +27,8 @@ from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+from cli.auth import auth_cli
 
 # Load .env before anything reads os.environ (tools, providers, LLM clients)
 load_dotenv(override=False)
@@ -131,6 +134,9 @@ def _build_runtime(cfg, topology_path: Optional[str], deploy: bool = True):
 @click.version_option("0.1.0", prog_name="swarm")
 def cli() -> None:
     """Swarm — a general-purpose, extensible LLM agent swarm. Supports Groq and OpenRouter."""
+
+
+cli.add_command(auth_cli)
 
 
 # ── run ───────────────────────────────────────────────────────────────────────

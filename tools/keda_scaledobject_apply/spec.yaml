@@ -1,0 +1,18 @@
+name: keda_scaledobject_apply
+description: "Apply or update a KEDA ScaledObject manifest (mutates cluster)."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: []
+input_schema:
+  type: object
+  properties:
+    manifest_path:
+      type: string
+      description: "Path to ScaledObject YAML relative to repo root"
+  required: [manifest_path]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 120.0
+retry:
+  max_attempts: 1

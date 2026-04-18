@@ -1,0 +1,19 @@
+name: k8s_rollout_undo
+description: "Undo a Kubernetes deployment rollout (mutates cluster — requires confirmation)."
+version: "1.0.0"
+side_effect_level: mutates-external
+permissions: []
+input_schema:
+  type: object
+  properties:
+    deployment:
+      type: string
+    namespace:
+      type: string
+  required: [deployment, namespace]
+  additionalProperties: false
+output_schema:
+  type: object
+timeout: 120.0
+retry:
+  max_attempts: 1
