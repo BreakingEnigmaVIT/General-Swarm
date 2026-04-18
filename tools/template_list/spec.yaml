@@ -1,0 +1,38 @@
+name: template_list
+description: "List all available boilerplate templates from the GitHub template org. Returns template metadata including id, description, stack tags, last CI pass date, and stale status. Agents call this first to pick the right template before calling template_clone."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    filter_tag:
+      type: string
+      description: "Optional tag to filter results (e.g. python, nextjs, gcp)"
+    include_stale:
+      type: boolean
+      description: "Include templates whose last_ci_pass is older than stale_days. Default false — stale templates are hidden by default."
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    templates:
+      type: array
+      items:
+        type: object
+        properties:
+          id: {type: string}
+          version: {type: string}
+          description: {type: string}
+          repo_url: {type: string}
+          last_ci_pass: {type: string}
+          stale: {type: boolean}
+          params: {type: array}
+          tags: {type: array}
+    total: {type: integer}
+    stale_hidden: {type: integer}
+timeout: 30.0
+retry:
+  max_attempts: 2
+  backoff_base: 2.0
+  backoff_max: 10.0

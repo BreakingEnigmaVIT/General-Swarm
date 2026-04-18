@@ -1,0 +1,32 @@
+name: template_verify
+description: "Verify that locked files under a cloned template directory still match the SHA-256 hashes recorded at clone time. Agents run this before committing or after edits to prove boilerplate integrity."
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  properties:
+    target_dir:
+      type: string
+      description: "Clone directory relative to workspace/ (same as template_clone target_dir)."
+    locked_hashes:
+      type: object
+      description: "Map of relative file path to expected sha256 hex string (from template_clone output). If omitted, reads workspace/{target_dir}/.swarm-template-manifest.json."
+  required: [target_dir]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    valid: {type: boolean}
+    checked: {type: integer}
+    violations:
+      type: array
+      items:
+        type: object
+        properties:
+          path: {type: string}
+          expected: {type: string}
+          actual: {type: string}
+timeout: 30.0
+retry:
+  max_attempts: 1

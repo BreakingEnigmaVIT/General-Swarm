@@ -1,0 +1,39 @@
+name: template_clone
+description: "Clone a boilerplate template repository into the agent workspace. Substitutes template params into configure-mode files. Returns a TemplateManifest describing every file and its mode (locked/configure/extend). Agents read the manifest to know which files they may modify. Never call this without first calling template_list to confirm the template id exists and is not stale."
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: []
+input_schema:
+  type: object
+  properties:
+    template_id:
+      type: string
+      description: "Template id as returned by template_list (e.g. fastapi-postgres)"
+    target_dir:
+      type: string
+      description: "Directory name to clone into, relative to workspace/. Created as workspace/{target_dir}/. Must not already exist."
+    params:
+      type: object
+      description: "Key-value pairs for template param substitution. All params marked required: true in template.json must be present."
+  required: [template_id, target_dir, params]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    cloned_to: {type: string}
+    template_id: {type: string}
+    template_version: {type: string}
+    files:
+      type: array
+      items:
+        type: object
+        properties:
+          path: {type: string}
+          mode: {type: string}
+          sha256: {type: string}
+    locked_hashes: {type: object}
+    params_applied: {type: object}
+    warnings: {type: array}
+timeout: 120.0
+retry:
+  max_attempts: 1
