@@ -1,1 +1,1 @@
-graph LR; A[PRD] --> B[ArchitectureDoc]; B --> C[APISpec]; B --> D[DBSchema];
+graph LR; A[Frontend] -->|API Call|> B[Backend]; B -->|Database Query|> C[Database]; C -->|Data|> B; B -->|Response|> A;

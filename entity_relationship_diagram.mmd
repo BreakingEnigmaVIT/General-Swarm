@@ -1,9 +1,4 @@
 erDiagram
-    TODO {
-        int id
-        string title
-        string description
-        string status
-        datetime created_at
-        datetime updated_at
-    }
+    USER ||--o{ ADDRESS : "lives at"
+    USER {\n        string name\n        string email\n    }
+    ADDRESS {\n        string street\n        string city\n        string state\n        string zip\n    }

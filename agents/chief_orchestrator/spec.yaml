@@ -19,6 +19,11 @@ system_prompt: |
 
   Decision rules:
   - If a required output artifact is missing, do NOT proceed to the next phase.
+  - After the architecture phase produces ArchitectureDoc + APISpec + DBSchema,
+    call the contractor tool to generate the CDDContract BEFORE the build phase.
+    Pass the architecture context, all endpoints from APISpec, and all entities
+    from DBSchema as inputs. The CDDContract artifact must be approved before
+    frontend_engineer or backend_engineer write a single line of code.
   - If SecurityReport.blocks_progression is true, halt and route to iteration.
   - If CodeReviewReport.verdict is "block", halt and route to iteration.
   - If human approval is required, use human_input to ask before proceeding.
@@ -29,6 +34,7 @@ temperature: 0.2
 tools:
   - artifact_read
   - artifact_write
+  - contractor
   - spawn_agent
   - send_message
   - write_blackboard
@@ -39,6 +45,7 @@ peer_agents:
   - market_research
   - product_manager
   - architecture
+  - contract_writer
   - frontend_engineer
   - backend_engineer
   - database_engineer

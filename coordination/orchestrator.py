@@ -109,6 +109,7 @@ class SwarmRuntime:
         import tools.self_reflect.handler as sr
         import tools.send_message.handler as sm_h
         import tools.spawn_agent.handler as sa
+        import tools.contractor.handler as ct
 
         if self._longterm:
             ms.set_memory(self._longterm)
@@ -123,6 +124,7 @@ class SwarmRuntime:
         )
         sr.set_provider(self._provider, _reflect_model)
         sa.set_factory(self._spawn_agent_for_goal)
+        ct.set_factory(self._spawn_agent_for_goal)
 
     def _make_agent(self, role: str, agent_id: Optional[str] = None) -> Agent:
         spec = self._agent_specs.get(role)

@@ -28,6 +28,7 @@ class ArtifactType(str, Enum):
     market_research = "MarketResearch"
     prd = "PRD"
     architecture_doc = "ArchitectureDoc"
+    cdd_contract = "CDDContract"
     api_spec = "APISpec"
     db_schema = "DBSchema"
     code_change_set = "CodeChangeSet"
@@ -157,6 +158,22 @@ class APISpec(ArtifactBase):
     base_path: str = "/"
     endpoints: list[APIEndpoint] = Field(default_factory=list)
     openapi_source: str = ""   # path to generated OpenAPI YAML in workspace
+
+
+class CDDContract(ArtifactBase):
+    """Full Contract-Driven Development document for a consumer-provider pair."""
+    artifact_type: ArtifactType = ArtifactType.cdd_contract
+    project_name: str = ""
+    contract_version: str = "1.0.0"
+    contract_status: str = "DRAFT"          # DRAFT | REVIEW | APPROVED | DEPRECATED
+    consumer_service: str = ""
+    provider_service: str = ""
+    primary_protocol: str = "HTTP_REST"
+    async_broker: str = "N/A"
+    full_document: str = ""                 # The complete 10-deliverable CDD markdown
+    openapi_yaml: str = ""                  # Extracted OpenAPI 3.x YAML (Deliverable 3)
+    asyncapi_yaml: str = ""                 # Extracted AsyncAPI YAML if broker != N/A
+    ci_pipeline_yaml: str = ""             # Extracted CI/CD pipeline YAML (Deliverable 9)
 
 
 class EntityField(BaseModel):
@@ -384,6 +401,7 @@ ARTIFACT_REGISTRY: dict[str, Type[ArtifactBase]] = {
     ArtifactType.prd.value: PRD,
     ArtifactType.architecture_doc.value: ArchitectureDoc,
     ArtifactType.api_spec.value: APISpec,
+    ArtifactType.cdd_contract.value: CDDContract,
     ArtifactType.db_schema.value: DBSchema,
     ArtifactType.code_change_set.value: CodeChangeSet,
     ArtifactType.test_report.value: TestReport,

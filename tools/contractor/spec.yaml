@@ -1,0 +1,227 @@
+name: contractor
+description: >
+  Generates a complete Contract-Driven Development (CDD) document for a
+  consumer-provider service pair. Fills the CDD master prompt template with
+  the supplied project context, delegates generation to the contract_writer
+  agent, and persists the result as a CDDContract artifact. Frontend and
+  backend agents MUST read this artifact before writing any code.
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: []
+input_schema:
+  type: object
+  additionalProperties: false
+  required:
+    - project_name
+    - project_description
+    - consumer_service_name
+    - provider_service_name
+    - architecture_description
+    - endpoints
+    - core_data_models
+  properties:
+    # ── Project identity ──────────────────────────────────────────────────────
+    project_name:
+      type: string
+      description: "Short name for the project (e.g. 'ProductCatalog')"
+    project_description:
+      type: string
+      description: "One or two sentence description of what the project does"
+    business_domain:
+      type: string
+      description: "Business domain (e.g. 'E-Commerce', 'FinTech', 'HealthTech')"
+      default: "Software"
+    contract_version:
+      type: string
+      description: "Semantic version for this contract (e.g. '1.0.0')"
+      default: "1.0.0"
+    contract_date:
+      type: string
+      description: "ISO date the contract is drafted (YYYY-MM-DD)"
+      default: ""
+    contract_owner_team:
+      type: string
+      description: "Team that owns and maintains this contract"
+      default: "Platform Team"
+    contract_owner_email:
+      type: string
+      description: "Owner contact email"
+      default: "platform@company.com"
+    contract_status:
+      type: string
+      enum: [DRAFT, REVIEW, APPROVED, DEPRECATED]
+      description: "Current lifecycle status of this contract"
+      default: "DRAFT"
+    # ── Architecture ──────────────────────────────────────────────────────────
+    architecture_description:
+      type: string
+      description: >
+        Full data-flow narrative: which service calls which, on which protocol
+        and port, and any async events emitted. E.g. 'BFF calls Product Service
+        over HTTP REST on port 8090. After each lookup BFF publishes to Kafka
+        topic product.queries.'
+    services:
+      type: string
+      description: "Comma-separated list of all services involved"
+      default: ""
+    primary_protocol:
+      type: string
+      enum: [HTTP_REST, gRPC, GraphQL, MIXED]
+      default: "HTTP_REST"
+    async_broker:
+      type: string
+      description: "Async message broker, or N/A if not used"
+      default: "N/A"
+    deployment_platform:
+      type: string
+      description: "Target deployment platform"
+      default: "DOCKER_COMPOSE"
+    # ── Consumer ──────────────────────────────────────────────────────────────
+    consumer_service_name:
+      type: string
+      description: "Name of the consuming service"
+    consumer_team:
+      type: string
+      default: "Frontend Team"
+    consumer_tech_stack:
+      type: string
+      description: "Language and framework (e.g. 'TypeScript / React')"
+      default: "TypeScript / React"
+    consumer_repo_url:
+      type: string
+      default: "N/A"
+    consumer_local_url:
+      type: string
+      default: "http://localhost:3000"
+    # ── Provider ──────────────────────────────────────────────────────────────
+    provider_service_name:
+      type: string
+      description: "Name of the providing service"
+    provider_team:
+      type: string
+      default: "Backend Team"
+    provider_tech_stack:
+      type: string
+      description: "Language and framework (e.g. 'Python / FastAPI')"
+      default: "Python / FastAPI"
+    provider_repo_url:
+      type: string
+      default: "N/A"
+    provider_local_url:
+      type: string
+      default: "http://localhost:8000"
+    provider_ci_url:
+      type: string
+      default: "http://localhost:8000"
+    provider_health_endpoint:
+      type: string
+      default: "/health"
+    actuator_mappings_path:
+      type: string
+      default: "N/A"
+    # ── Endpoints & data models ───────────────────────────────────────────────
+    endpoints:
+      type: string
+      description: >
+        List every HTTP endpoint this contract must cover, one per line.
+        Format: METHOD  /path/{param}   — description
+        E.g.: GET  /items/{id}  — Fetch a single item by ID
+    core_data_models:
+      type: string
+      description: >
+        Describe every domain entity with field names, types, constraints, and
+        example values. E.g.: Item: id(integer), name(string,max200,mandatory),
+        status(enum:active|archived), createdAt(datetime,server-set)
+    kafka_topics:
+      type: string
+      description: "Async topic definitions, or N/A"
+      default: "N/A"
+    # ── Error, repo & tooling ─────────────────────────────────────────────────
+    error_policy:
+      type: string
+      description: "Organisation error handling rules and error response schema"
+      default: >
+        Standard error body: {error: string, code: string, details: object|null}.
+        400 = bad input, 404 = not found, 422 = validation failure (never 500
+        for bad input), 500 = provider fault. Stack traces must never appear in
+        responses.
+    contract_repo_url:
+      type: string
+      default: "N/A"
+    contract_folder_structure:
+      type: string
+      default: "contracts/{service_name}/{version}/"
+    linting_tool:
+      type: string
+      enum: [STOPLIGHT_SPECTRAL, REDOCLY, "N/A"]
+      default: "STOPLIGHT_SPECTRAL"
+    ci_cd_platform:
+      type: string
+      enum: [GITHUB_ACTIONS, GITLAB_CI, JENKINS, AZURE_DEVOPS]
+      default: "GITHUB_ACTIONS"
+    test_data_examples:
+      type: string
+      description: "Named test data that exists in dev/test DB for deterministic examples"
+      default: "N/A"
+    contract_testing_tool:
+      type: string
+      enum: [SPECMATIC, PACT, SPRING_CLOUD_CONTRACT]
+      default: "SPECMATIC"
+    specmatic_version:
+      type: string
+      default: "2.0.7"
+    test_framework:
+      type: string
+      enum: [JUNIT5, KARATE, PYTEST, RSPEC, JEST]
+      default: "PYTEST"
+    build_tool:
+      type: string
+      enum: [GRADLE, MAVEN, NPM, PIP, MAKEFILE]
+      default: "PIP"
+    authentication:
+      type: string
+      default: "NONE"
+    rate_limiting:
+      type: string
+      default: "N/A"
+    pagination_style:
+      type: string
+      default: "N/A"
+    custom_headers:
+      type: string
+      default: "N/A"
+    additional_notes:
+      type: string
+      default: "N/A"
+    # ── Artifact linkage ──────────────────────────────────────────────────────
+    source_artifact_ids:
+      type: array
+      items:
+        type: string
+      description: "IDs of ArchitectureDoc, APISpec, etc. that informed this contract"
+      default: []
+    stage_id:
+      type: string
+      default: "contracting"
+
+output_schema:
+  type: object
+  properties:
+    artifact_id:
+      type: string
+      description: "ID of the persisted CDDContract artifact"
+    artifact_type:
+      type: string
+    status:
+      type: string
+    contract_version:
+      type: string
+    error:
+      type: string
+  required: [artifact_id, artifact_type, status]
+
+timeout: 600.0
+retry:
+  max_attempts: 2
+  backoff_base: 5.0
+  backoff_max: 30.0
