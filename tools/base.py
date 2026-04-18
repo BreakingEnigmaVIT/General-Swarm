@@ -16,6 +16,62 @@ from observability.tracing import Span, get_tracer
 log = get_logger("tools")
 
 
+def _coerce_inputs(inputs: dict[str, Any], schema: dict[str, Any]) -> dict[str, Any]:
+    """
+    Coerce and sanitise tool call arguments before JSON Schema validation.
+
+    Handles three classes of model misbehaviour:
+    1. Scalar types sent as strings  ("true" → True, "3" → 3)
+    2. Arrays/objects sent as JSON strings  ('["a","b"]' → ["a","b"])
+    3. Plain-text strings sent where an object is expected  → {"content": text}
+    4. Extra properties on schemas with additionalProperties:false  → stripped
+    """
+    import json as _json
+
+    properties: dict[str, Any] = schema.get("properties", {})
+
+    # Strip extra properties when the schema forbids them
+    if schema.get("additionalProperties") is False and properties:
+        inputs = {k: v for k, v in inputs.items() if k in properties}
+
+    if not properties:
+        return inputs
+
+    result = dict(inputs)
+    for key, prop in properties.items():
+        if key not in result or not isinstance(result[key], str):
+            continue
+        expected = prop.get("type")
+        if expected == "boolean":
+            lower = result[key].lower()
+            if lower in ("true", "1", "yes"):
+                result[key] = True
+            elif lower in ("false", "0", "no"):
+                result[key] = False
+        elif expected == "integer":
+            try:
+                result[key] = int(result[key])
+            except ValueError:
+                pass
+        elif expected == "number":
+            try:
+                result[key] = float(result[key])
+            except ValueError:
+                pass
+        elif expected in ("array", "object"):
+            try:
+                parsed = _json.loads(result[key])
+                if expected == "array" and isinstance(parsed, list):
+                    result[key] = parsed
+                elif expected == "object" and isinstance(parsed, dict):
+                    result[key] = parsed
+            except (_json.JSONDecodeError, ValueError):
+                # Plain text passed where an object is expected — wrap it
+                if expected == "object":
+                    result[key] = {"content": result[key]}
+    return result
+
+
 class ToolHandler(ABC):
     """
     All tools must subclass this and implement `_run`.
@@ -30,6 +86,9 @@ class ToolHandler(ABC):
     async def _run(self, inputs: dict[str, Any]) -> dict[str, Any]: ...
 
     async def run(self, inputs: dict[str, Any], agent_id: Optional[str] = None) -> dict[str, Any]:
+        # Coerce string booleans/integers that some models produce in tool calls
+        if self.spec.input_schema:
+            inputs = _coerce_inputs(inputs, self.spec.input_schema)
         # Input validation
         if self.spec.input_schema:
             try:

@@ -187,6 +187,8 @@ class SwarmConfig(BaseSettings):
     )
 
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
+    openrouter_api_key: str = Field(default="", alias="OPENROUTER_API_KEY")
+    provider: str = "groq"
     default_model: str = "llama-3.3-70b-versatile"
     log_level: str = "INFO"
     log_file: Optional[str] = None
@@ -195,6 +197,7 @@ class SwarmConfig(BaseSettings):
     memory_backend: str = "local"
     bus_transport: str = "in-process"
     redis_url: str = "redis://localhost:6379"
+    deployment_mode: Literal["local", "redis-workers", "kubernetes"] = "local"
     agents_dir: str = "./agents"
     tools_dir: str = "./tools"
     api_host: str = "0.0.0.0"

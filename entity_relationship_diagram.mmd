@@ -1,0 +1,13 @@
+erDiagram
+    TASK ||--o{ USER : assigns
+    TASK {
+        int id
+        string title
+        string description
+        boolean completed
+    }
+    USER {
+        int id
+        string name
+        string email
+    }

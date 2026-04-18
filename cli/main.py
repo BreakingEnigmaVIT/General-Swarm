@@ -37,11 +37,17 @@ def _load_config(
     log_level: str,
     trace_dir: str,
     safety_mode: str,
+    provider: Optional[str] = None,
+    openrouter_api_key: Optional[str] = None,
 ) -> "SwarmConfig":  # type: ignore[name-defined]
     from configs.loader import load_swarm_config
     overrides = {}
     if api_key:
         overrides["groq_api_key"] = api_key
+    if openrouter_api_key:
+        overrides["openrouter_api_key"] = openrouter_api_key
+    if provider:
+        overrides["provider"] = provider
     if model:
         overrides["default_model"] = model
     overrides["log_level"] = log_level
@@ -63,6 +69,7 @@ def _bootstrap(cfg: "SwarmConfig") -> tuple:  # type: ignore[name-defined]
         tools_dir=cfg.tools_dir,
         agents_dir=cfg.agents_dir,
         groq_api_key=cfg.groq_api_key,
+        openrouter_api_key=cfg.openrouter_api_key,
         default_model=cfg.default_model,
     )
     return tr, ar, pr
@@ -97,7 +104,7 @@ def _build_runtime(cfg, topology_path: Optional[str]):
 
     agent_specs = {name: spec for name, spec in ar.items()}
     tool_handlers = {name: handler for name, handler in tr.items()}
-    provider = pr.get_or_default("groq")
+    provider = pr.get_or_default(cfg.provider or "groq")
 
     runtime = SwarmRuntime(
         topology=topology,
@@ -107,6 +114,8 @@ def _build_runtime(cfg, topology_path: Optional[str]):
         bus=bus,
         longterm_memory=longterm,
         ledger=ledger,
+        deployment_mode=cfg.deployment_mode,
+        redis_url=cfg.redis_url,
     )
     return runtime, ledger
 
@@ -116,7 +125,7 @@ def _build_runtime(cfg, topology_path: Optional[str]):
 @click.group()
 @click.version_option("0.1.0", prog_name="swarm")
 def cli() -> None:
-    """Swarm — a general-purpose, extensible LLM agent swarm backed by Groq."""
+    """Swarm — a general-purpose, extensible LLM agent swarm. Supports Groq and OpenRouter."""
 
 
 # ── run ───────────────────────────────────────────────────────────────────────
@@ -124,7 +133,9 @@ def cli() -> None:
 @cli.command()
 @click.argument("topology", required=False, default=None)
 @click.option("--goal", "-g", required=True, help="High-level goal for the swarm")
+@click.option("--provider", "-p", default=None, type=click.Choice(["groq", "openrouter"]), help="LLM provider to use")
 @click.option("--api-key", envvar="GROQ_API_KEY", default=None, help="Groq API key")
+@click.option("--openrouter-api-key", envvar="OPENROUTER_API_KEY", default=None, help="OpenRouter API key")
 @click.option("--model", "-m", default=None, help="Override default LLM model")
 @click.option("--log-level", default="INFO", show_default=True)
 @click.option("--trace-dir", default="./traces", show_default=True)
@@ -134,7 +145,9 @@ def cli() -> None:
 def run(
     topology: Optional[str],
     goal: str,
+    provider: Optional[str],
     api_key: Optional[str],
+    openrouter_api_key: Optional[str],
     model: Optional[str],
     log_level: str,
     trace_dir: str,
@@ -150,12 +163,18 @@ def run(
     \b
     Example:
       swarm run --goal "Research the latest LLM benchmarks"
+      swarm run --provider openrouter --model meta-llama/llama-3.3-70b-instruct --goal "..."
       swarm run configs/research.yaml --goal "Write a Python web scraper"
     """
-    cfg = _load_config(api_key, model, log_level, trace_dir, safety_mode)
+    cfg = _load_config(api_key, model, log_level, trace_dir, safety_mode, provider, openrouter_api_key)
     _setup_logging(cfg)
 
-    if not cfg.groq_api_key:
+    active_provider = cfg.provider or "groq"
+    if active_provider == "openrouter" and not cfg.openrouter_api_key:
+        console.print("[bold red]Error:[/bold red] OPENROUTER_API_KEY is not set.")
+        console.print("  Set it in .env or pass --openrouter-api-key")
+        sys.exit(1)
+    if active_provider == "groq" and not cfg.groq_api_key:
         console.print("[bold red]Error:[/bold red] GROQ_API_KEY is not set.")
         console.print("  Set it in .env or pass --api-key")
         sys.exit(1)
@@ -257,7 +276,10 @@ def list_cmd(
         console.print(t)
 
     elif kind == "providers":
-        rows = [("groq", "Groq LLaMA API", "https://groq.com")]
+        rows = [
+            ("groq", "Groq LLaMA API", "https://groq.com"),
+            ("openrouter", "OpenRouter (OpenAI-compatible multi-model)", "https://openrouter.ai"),
+        ]
         if output_json:
             click.echo(json.dumps([{"name": r[0]} for r in rows], indent=2))
             return
@@ -450,9 +472,10 @@ def dashboard(host: str, port: int, api_key: Optional[str]) -> None:
 
 @cli.command()
 @click.option("--api-key", envvar="GROQ_API_KEY", default=None)
+@click.option("--openrouter-api-key", envvar="OPENROUTER_API_KEY", default=None)
 @click.option("--agents-dir", default="./agents")
 @click.option("--tools-dir", default="./tools")
-def doctor(api_key: Optional[str], agents_dir: str, tools_dir: str) -> None:
+def doctor(api_key: Optional[str], openrouter_api_key: Optional[str], agents_dir: str, tools_dir: str) -> None:
     """Validate the environment, credentials, and registry integrity."""
     ok = True
 
@@ -470,10 +493,11 @@ def doctor(api_key: Optional[str], agents_dir: str, tools_dir: str) -> None:
     # Credentials
     from dotenv import load_dotenv
     load_dotenv()
-    key = api_key or ""
     import os
-    key = key or os.environ.get("GROQ_API_KEY", "")
+    key = api_key or os.environ.get("GROQ_API_KEY", "")
+    or_key = openrouter_api_key or os.environ.get("OPENROUTER_API_KEY", "")
     check("GROQ_API_KEY is set", bool(key), "Set GROQ_API_KEY in .env or environment")
+    check("OPENROUTER_API_KEY is set", bool(or_key), "Set OPENROUTER_API_KEY in .env or environment (optional)")
 
     # Directories
     check("agents/ directory exists", Path(agents_dir).exists(), f"mkdir {agents_dir}")
@@ -717,7 +741,9 @@ def _write_phase_gate_decision(
 @cli.command("workforce")
 @click.argument("topology")
 @click.option("--goal", "-g", required=True, help="Product goal for the workforce")
+@click.option("--provider", "-p", default=None, type=click.Choice(["groq", "openrouter"]), help="LLM provider to use")
 @click.option("--api-key", envvar="GROQ_API_KEY", default=None)
+@click.option("--openrouter-api-key", envvar="OPENROUTER_API_KEY", default=None, help="OpenRouter API key")
 @click.option("--model", "-m", default=None)
 @click.option("--log-level", default="INFO", show_default=True)
 @click.option("--trace-dir", default="./traces", show_default=True)
@@ -728,7 +754,9 @@ def _write_phase_gate_decision(
 def workforce(
     topology: str,
     goal: str,
+    provider: Optional[str],
     api_key: Optional[str],
+    openrouter_api_key: Optional[str],
     model: Optional[str],
     log_level: str,
     trace_dir: str,
@@ -747,11 +775,15 @@ def workforce(
         --goal "Build a URL-shortener SaaS with email/password auth and a dashboard"
     """
     safety_mode = "auto" if approve_all else "interactive"
-    cfg = _load_config(api_key, model, log_level, trace_dir, safety_mode)
+    cfg = _load_config(api_key, model, log_level, trace_dir, safety_mode, provider, openrouter_api_key)
     cfg.memory_dir = memory_dir
     _setup_logging(cfg)
 
-    if not cfg.groq_api_key:
+    active_provider = cfg.provider or "groq"
+    if active_provider == "openrouter" and not cfg.openrouter_api_key:
+        console.print("[bold red]Error:[/bold red] OPENROUTER_API_KEY is not set.")
+        sys.exit(1)
+    if active_provider == "groq" and not cfg.groq_api_key:
         console.print("[bold red]Error:[/bold red] GROQ_API_KEY is not set.")
         sys.exit(1)
 

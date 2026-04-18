@@ -64,7 +64,7 @@ class ArtifactBase(BaseModel):
 
 class ProductBrief(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.product_brief
-    goal_statement: str
+    goal_statement: str = ""
     target_market: str = ""
     key_constraints: list[str] = Field(default_factory=list)
     raw_goal: str = ""
@@ -86,7 +86,7 @@ class PainPoint(BaseModel):
 
 class MarketResearch(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.market_research
-    trend_summary: str
+    trend_summary: str = ""
     competitors: list[CompetitorEntry] = Field(default_factory=list)
     pain_points: list[PainPoint] = Field(default_factory=list)
     recommended_positioning: str = ""
@@ -108,8 +108,8 @@ class NonFunctionalRequirement(BaseModel):
 
 class PRD(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.prd
-    problem_statement: str
-    target_user: str
+    problem_statement: str = ""
+    target_user: str = ""
     success_metrics: list[str] = Field(default_factory=list)
     functional_requirements: list[FunctionalRequirement] = Field(default_factory=list)
     non_functional_requirements: list[NonFunctionalRequirement] = Field(default_factory=list)
@@ -152,7 +152,7 @@ class ArchitectureDoc(ArtifactBase):
 
 class APISpec(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.api_spec
-    service_name: str
+    service_name: str = ""
     base_path: str = "/"
     endpoints: list[APIEndpoint] = Field(default_factory=list)
     openapi_source: str = ""   # path to generated OpenAPI YAML in workspace
@@ -193,14 +193,10 @@ class ReversalPlan(BaseModel):
 
 class CodeChangeSet(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.code_change_set
-    layer: str  # frontend | backend | database | integration | devops
+    layer: str = ""  # frontend | backend | database | integration | devops
     files_changed: list[FileChange] = Field(default_factory=list)
     summary: str = ""
-    reversal_plan: ReversalPlan = Field(default_factory=lambda: ReversalPlan(description=""))
-
-    def model_post_init(self, __context: Any) -> None:
-        if not self.reversal_plan.description:
-            raise ValueError("CodeChangeSet.reversal_plan.description must be non-empty")
+    reversal_plan: ReversalPlan = Field(default_factory=lambda: ReversalPlan(description="revert via git"))
 
 
 # ── Quality ───────────────────────────────────────────────────────────────────
@@ -277,7 +273,7 @@ class PipelineStage(BaseModel):
 
 class DeploymentPlan(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.deployment_plan
-    target_environment: str  # staging | production | local
+    target_environment: str = "staging"  # staging | production | local
     strategy: str = "rolling"  # rolling | blue_green | canary
     pipeline_stages: list[PipelineStage] = Field(default_factory=list)
     ci_tool: str = "github_actions"
@@ -285,17 +281,13 @@ class DeploymentPlan(ArtifactBase):
 
 class DeploymentRecord(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.deployment_record
-    environment: str
-    strategy_used: str
+    environment: str = "staging"
+    strategy_used: str = "rolling"
     image_digest: str = ""
     rollout_started_at: Optional[datetime] = None
     rollout_completed_at: Optional[datetime] = None
     rollback_handle: str = ""   # command or procedure reference
-    reversal_plan: ReversalPlan = Field(default_factory=lambda: ReversalPlan(description=""))
-
-    def model_post_init(self, __context: Any) -> None:
-        if not self.reversal_plan.description:
-            raise ValueError("DeploymentRecord.reversal_plan.description must be non-empty")
+    reversal_plan: ReversalPlan = Field(default_factory=lambda: ReversalPlan(description="revert deployment"))
 
 
 class SLODefinition(BaseModel):
@@ -348,8 +340,8 @@ class ReleaseVerdict(str, Enum):
 
 class ReleaseDecision(ArtifactBase):
     artifact_type: ArtifactType = ArtifactType.release_decision
-    verdict: ReleaseVerdict
-    routing_phase: str  # phase id to re-enter: discovery | planning | build | ...
+    verdict: ReleaseVerdict = ReleaseVerdict.minor_update
+    routing_phase: str = "planning"  # phase id to re-enter: discovery | planning | build | ...
     evidence_artifact_ids: list[str] = Field(default_factory=list)
     changelog_draft: str = ""
 

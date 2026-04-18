@@ -177,14 +177,16 @@ def bootstrap_registries(
     tools_dir: str = "./tools",
     agents_dir: str = "./agents",
     groq_api_key: str = "",
+    openrouter_api_key: str = "",
     default_model: str = "llama-3.3-70b-versatile",
 ) -> tuple[ToolRegistry, AgentSpecRegistry, ProviderRegistry]:
     """
     Initialise all three registries from scratch:
     - Autodiscover tools and agent specs from disk
-    - Register Groq provider
+    - Register Groq and/or OpenRouter providers
     """
     from providers.groq.adapter import GroqAdapter
+    from providers.openrouter.adapter import OpenRouterAdapter
 
     tr = get_tool_registry()
     ar = get_agent_spec_registry()
@@ -196,5 +198,9 @@ def bootstrap_registries(
     if groq_api_key:
         groq = GroqAdapter(api_key=groq_api_key, default_model=default_model)
         pr.register("groq", groq, overwrite=True)
+
+    if openrouter_api_key:
+        openrouter = OpenRouterAdapter(api_key=openrouter_api_key, default_model=default_model)
+        pr.register("openrouter", openrouter, overwrite=True)
 
     return tr, ar, pr
