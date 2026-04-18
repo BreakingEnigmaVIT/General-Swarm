@@ -7,11 +7,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first (layer cache)
-COPY pyproject.toml ./
+# Hatchling needs README.md + package dirs from pyproject before editable install
+COPY pyproject.toml README.md ./
+COPY core agents tools providers memory coordination observability cli api configs ./
+
 RUN pip install --no-cache-dir -e ".[redis]"
 
-# Copy source
+# Remaining project files (examples, tests, docs, deploy, …)
 COPY . .
 
 # Create runtime directories

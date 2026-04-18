@@ -34,7 +34,7 @@ from core.task import Task, TaskConstraints, TaskResult, TokenUsage
 from memory.longterm import LocalChromaMemory
 from memory.scratchpad import Scratchpad
 from observability.cost import CostLedger
-from observability.logging import get_logger
+from observability.logutil import get_logger
 from providers.base import LLMProvider
 from tools.base import ToolHandler
 

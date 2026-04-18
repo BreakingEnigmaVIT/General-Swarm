@@ -1,8 +1,12 @@
-version: "3.9"
+# Build: Dockerfile copies README.md + Python packages before `pip install -e` (Hatchling metadata).
+
+x-swarm-build: &swarm-build
+  context: .
+  dockerfile: Dockerfile
 
 services:
   swarm:
-    build: .
+    build: *swarm-build
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - SWARM_BUS_TRANSPORT=redis
@@ -29,13 +33,12 @@ services:
   # One role per service; duplicate or use K8s for full multi-role fleets.
   swarm-worker:
     profiles: ["queue-workers"]
-    build: .
+    build: *swarm-build
     command: ["python", "-m", "coordination.worker"]
     environment:
       - GROQ_API_KEY=${GROQ_API_KEY}
       - SWARM_BUS_TRANSPORT=redis
       - SWARM_REDIS_URL=redis://redis:6379
-      - SWARM_DEPLOYMENT_MODE=redis-workers
       - SWARM_STREAM_PREFIX=${SWARM_STREAM_PREFIX:-swarm}
       - SWARM_ORCHESTRATOR_ID=${SWARM_ORCHESTRATOR_ID:-orchestrator}
       - SWARM_WORKER_ROLE=${SWARM_WORKER_ROLE:-coder}

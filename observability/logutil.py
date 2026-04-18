@@ -1,13 +1,4 @@
-"""Structured logging setup.
-
-Every event emits both a human-readable console line (via Rich) and a
-machine-parseable JSON record to the optional log file.
-
-Usage:
-    from observability.logging import get_logger
-    log = get_logger(__name__)
-    log.info("tool_called", tool="echo", agent_id="abc")
-"""
+"""Swarm structlog setup; lives in logutil.py so Python never imports this file as the stdlib `logging` module."""
 
 from __future__ import annotations
 
@@ -21,8 +12,8 @@ from structlog.types import EventDict, WrappedLogger
 
 from observability.tracing import get_span_id, get_trace_id
 
-
 # ── Custom processors ─────────────────────────────────────────────────────────
+
 
 def _add_trace_context(
     logger: WrappedLogger, method_name: str, event_dict: EventDict
@@ -37,6 +28,7 @@ def _add_trace_context(
 
 
 # ── Public setup call ─────────────────────────────────────────────────────────
+
 
 def configure_logging(level: str = "INFO", log_file: Optional[str] = None) -> None:
     """Call once at startup, before any log statements."""

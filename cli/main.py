@@ -57,7 +57,7 @@ def _load_config(
 
 
 def _setup_logging(cfg: "SwarmConfig") -> None:  # type: ignore[name-defined]
-    from observability.logging import configure_logging
+    from observability.logutil import configure_logging
     configure_logging(cfg.log_level, cfg.log_file)
 
 

@@ -19,7 +19,7 @@ import networkx as nx
 from coordination.task_queue import TaskQueue
 from core.exceptions import CyclicTaskGraphError
 from core.task import Task, TaskResult, TaskStatus
-from observability.logging import get_logger
+from observability.logutil import get_logger
 from observability.tracing import Span, get_tracer
 
 log = get_logger("coordination.task_graph")

@@ -34,7 +34,7 @@ from memory.artifact_schemas.base import (
     ArtifactStatus,
     ArtifactType,
 )
-from observability.logging import get_logger
+from observability.logutil import get_logger
 
 log = get_logger("memory.artifacts")
 

@@ -16,7 +16,7 @@ from tenacity import (
 from core.exceptions import ModelNotAvailableError, ProviderError, RateLimitError
 from core.task import TokenUsage
 from observability.cost import estimate_cost
-from observability.logging import get_logger
+from observability.logutil import get_logger
 from observability.tracing import Span, get_tracer
 from providers.base import CompletionResult, LLMProvider, StreamChunk, ToolCall
 

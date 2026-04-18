@@ -17,7 +17,7 @@ from typing import Any, Generic, Optional, TypeVar
 from configs.loader import load_agent_spec, load_tool_spec
 from configs.schema import AgentSpec, ToolSpec
 from core.exceptions import AlreadyRegisteredError, NotRegisteredError
-from observability.logging import get_logger
+from observability.logutil import get_logger
 from providers.base import LLMProvider
 from tools.base import ToolHandler
 

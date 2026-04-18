@@ -10,7 +10,7 @@ import json
 from typing import Any, Optional
 
 from memory.base import MemoryInterface
-from observability.logging import get_logger
+from observability.logutil import get_logger
 
 log = get_logger("memory.scratchpad")
 

@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from typing import AsyncIterator, Optional
 
 from core.message import Message
-from observability.logging import get_logger
+from observability.logutil import get_logger
 from observability.tracing import Span, get_tracer
 
 log = get_logger("coordination.bus")

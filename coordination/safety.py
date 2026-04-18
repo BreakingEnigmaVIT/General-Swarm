@@ -20,7 +20,7 @@ from typing import Any, Optional
 
 from configs.schema import SafetyConfig, SideEffectLevel
 from core.exceptions import SafetyError
-from observability.logging import get_logger
+from observability.logutil import get_logger
 
 log = get_logger("safety")
 

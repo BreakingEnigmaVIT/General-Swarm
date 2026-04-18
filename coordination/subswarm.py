@@ -19,7 +19,7 @@ from coordination.bus import MessageBus
 from core.agent import Agent
 from core.task import Task, TaskConstraints, TaskResult, TokenUsage
 from memory.blackboard import Blackboard
-from observability.logging import get_logger
+from observability.logutil import get_logger
 
 log = get_logger("coordination.subswarm")
 

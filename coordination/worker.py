@@ -20,7 +20,7 @@ from core.registry import bootstrap_registries
 from core.task import Task, TaskResult
 from memory.longterm import LocalChromaMemory
 from observability.cost import CostLedger
-from observability.logging import configure_logging, get_logger
+from observability.logutil import configure_logging, get_logger
 from observability.tracing import configure_tracer
 
 log = get_logger("coordination.worker")

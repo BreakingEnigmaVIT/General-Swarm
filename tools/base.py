@@ -10,7 +10,7 @@ import jsonschema
 
 from configs.schema import ToolSpec
 from core.exceptions import ToolInputError, ToolTimeoutError
-from observability.logging import get_logger
+from observability.logutil import get_logger
 from observability.tracing import Span, get_tracer
 
 log = get_logger("tools")
