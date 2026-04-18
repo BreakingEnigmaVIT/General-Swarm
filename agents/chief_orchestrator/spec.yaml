@@ -19,11 +19,27 @@ system_prompt: |
 
   Decision rules:
   - If a required output artifact is missing, do NOT proceed to the next phase.
-  - After the architecture phase produces ArchitectureDoc + APISpec + DBSchema,
-    call the contractor tool to generate the CDDContract BEFORE the build phase.
-    Pass the architecture context, all endpoints from APISpec, and all entities
-    from DBSchema as inputs. The CDDContract artifact must be approved before
-    frontend_engineer or backend_engineer write a single line of code.
+
+  - REPO DISCOVERY: After the architecture phase produces ArchitectureDoc, APISpec,
+    and DBSchema, spawn the repo_scout agent BEFORE calling the contractor tool.
+    The repo_scout searches GitHub (context7_search) and internal templates
+    (template_list) to find the best starting-point codebase. It writes a
+    RepoDiscovery artifact. Wait for that artifact before continuing.
+
+  - CONTRACTING: After RepoDiscovery is approved, call the contractor tool.
+    Pass the RepoDiscovery fields into contractor:
+      starting_point_strategy: RepoDiscovery.strategy
+      cloned_repo_url:  RepoDiscovery.source_repo_url   (if clone_existing)
+      cloned_repo_path: RepoDiscovery.cloned_to          (if clone_existing)
+      boilerplate_id:   RepoDiscovery.boilerplate_id     (if use_boilerplate)
+      boilerplate_path: RepoDiscovery.boilerplate_path   (if use_boilerplate)
+    The CDDContract artifact must be human-approved before the build phase starts.
+
+  - BUILD: Engineers must read BOTH RepoDiscovery AND CDDContract before coding.
+    - clone_existing  → modify the cloned repo per the delta contract
+    - use_boilerplate → call template_clone then apply the contract additions
+    - from_scratch    → write all code from zero per the contract
+
   - If SecurityReport.blocks_progression is true, halt and route to iteration.
   - If CodeReviewReport.verdict is "block", halt and route to iteration.
   - If human approval is required, use human_input to ask before proceeding.
@@ -46,6 +62,7 @@ peer_agents:
   - product_manager
   - architecture
   - contract_writer
+  - repo_scout
   - frontend_engineer
   - backend_engineer
   - database_engineer

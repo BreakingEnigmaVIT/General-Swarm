@@ -1,0 +1,76 @@
+name: context7_search
+description: >
+  Searches GitHub for public repositories that closely match a project
+  description and tech-stack requirements. Returns ranked results with
+  similarity scores so the repo_scout agent can decide whether an existing
+  repo is close enough to clone rather than building from scratch.
+  Uses the GitHub Search API (SWARM_GITHUB_TOKEN required).
+version: "1.0.0"
+side_effect_level: read-only
+permissions: []
+input_schema:
+  type: object
+  additionalProperties: false
+  required:
+    - query
+  properties:
+    query:
+      type: string
+      description: >
+        Natural-language description of the project, e.g.
+        "React TypeScript todo app with FastAPI backend and Postgres".
+        The tool converts this into an optimised GitHub search query.
+    language:
+      type: string
+      description: "Primary programming language filter (e.g. 'Python', 'TypeScript')"
+      default: ""
+    topics:
+      type: array
+      items:
+        type: string
+      description: "GitHub topic labels to filter by (e.g. ['fastapi', 'react', 'postgres'])"
+      default: []
+    min_stars:
+      type: integer
+      description: "Minimum star count — filters out abandoned or trivial repos"
+      default: 10
+    max_results:
+      type: integer
+      description: "Maximum number of results to return (1-30)"
+      default: 10
+    similarity_threshold:
+      type: number
+      description: >
+        Minimum similarity score (0.0-1.0) for a result to be included.
+        Scores are heuristic — topic overlap + description match + language match.
+      default: 0.3
+output_schema:
+  type: object
+  properties:
+    results:
+      type: array
+      items:
+        type: object
+        properties:
+          repo_full_name:  {type: string}
+          html_url:        {type: string}
+          description:     {type: string}
+          stars:           {type: integer}
+          language:        {type: string}
+          topics:          {type: array, items: {type: string}}
+          similarity_score: {type: number}
+          clone_url:       {type: string}
+          default_branch:  {type: string}
+          last_push:       {type: string}
+    total_found:   {type: integer}
+    query_used:    {type: string}
+    best_match:
+      type: object
+      description: "The highest-scoring result, or null if no results meet the threshold"
+    error:         {type: string}
+  required: [results, total_found, query_used]
+timeout: 30.0
+retry:
+  max_attempts: 2
+  backoff_base: 2.0
+  backoff_max: 10.0

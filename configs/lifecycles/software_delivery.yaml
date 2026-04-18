@@ -10,16 +10,17 @@ description: >
 
 # Global budget allocation (percentages must sum to ≤ 100)
 budget_allocation:
-  discovery:    8
-  planning:     8
-  architecture: 10
-  contracting:  5
-  build:        20
-  live_test:    10
-  quality:      12
-  deployment:   10
-  post_launch:  10
-  iteration:    7
+  discovery:       8
+  planning:        8
+  architecture:    10
+  repo_discovery:  4
+  contracting:     4
+  build:           18
+  live_test:       10
+  quality:         12
+  deployment:      10
+  post_launch:     10
+  iteration:       6
 
 phases:
   - id: discovery
@@ -72,21 +73,48 @@ phases:
     human_approval_gate: true
     on_failure: abort
 
+  - id: repo_discovery
+    name: Repo Discovery
+    description: >
+      Find the best starting-point codebase before any code is written.
+      The repo_scout agent runs context7_search against the project requirements
+      and tech stack. Priority order:
+        1. Clone an existing GitHub repo (similarity >= 0.65, recently maintained)
+        2. Use an internal boilerplate template (template_list + template_clone)
+        3. Start from scratch if neither fits
+      The RepoDiscovery artifact records the chosen strategy and all paths so
+      the contracting and build phases know exactly what they are working with.
+    default_agents:
+      - repo_scout
+    required_input_artifact_types:
+      - PRD
+      - ArchitectureDoc
+    required_output_artifact_types:
+      - RepoDiscovery
+    human_approval_gate: false
+    on_failure: abort
+
   - id: contracting
     name: Contracting
     description: >
       Generate the Contract-Driven Development (CDD) document that governs the
       entire build phase. The chief_orchestrator calls the contractor tool with
-      context from ArchitectureDoc, APISpec, and DBSchema. The resulting
-      CDDContract artifact is the single source of truth for every API
-      interaction between frontend and backend. Neither engineer may write code
-      until this artifact is approved.
+      context from ArchitectureDoc, APISpec, DBSchema, and the RepoDiscovery
+      artifact. The contract adapts to the chosen strategy:
+        - clone_existing   → specifies exactly what changes to make to the cloned
+                             repo so it fits the user's requirements (delta contract)
+        - use_boilerplate  → specifies which boilerplate to use and all the
+                             customisations required on top of it
+        - from_scratch     → full new-codebase CDD contract
+      The resulting CDDContract artifact is the single source of truth. Neither
+      engineer may write a single line of code until it is approved.
     default_agents:
       - chief_orchestrator
     required_input_artifact_types:
       - ArchitectureDoc
       - APISpec
       - DBSchema
+      - RepoDiscovery
     required_output_artifact_types:
       - CDDContract
     human_approval_gate: true
@@ -110,6 +138,7 @@ phases:
       - ArchitectureDoc
       - APISpec
       - DBSchema
+      - RepoDiscovery
       - CDDContract
     required_output_artifact_types:
       - CodeChangeSet

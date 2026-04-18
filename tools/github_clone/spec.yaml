@@ -1,0 +1,50 @@
+name: github_clone
+description: >
+  Clones any GitHub repository (public or private) into the built/ workspace
+  directory. Use this after context7_search identifies a good candidate repo.
+  For boilerplate templates from your own org use template_clone instead.
+  Requires SWARM_GITHUB_TOKEN in .env for private repos; public repos work
+  without a token but the token avoids rate limits.
+version: "1.0.0"
+side_effect_level: mutates-local
+permissions: []
+input_schema:
+  type: object
+  additionalProperties: false
+  required:
+    - repo_url
+    - target_dir
+  properties:
+    repo_url:
+      type: string
+      description: >
+        Full GitHub URL or owner/repo shorthand.
+        E.g. "https://github.com/tiangolo/full-stack-fastapi-template"
+        or "tiangolo/full-stack-fastapi-template"
+    target_dir:
+      type: string
+      description: >
+        Directory name to clone into, relative to built/.
+        Created as built/{target_dir}/. Must not already exist.
+    branch:
+      type: string
+      description: "Branch or tag to checkout after cloning. Defaults to the repo's default branch."
+      default: ""
+    depth:
+      type: integer
+      description: "Shallow clone depth (1 = latest commit only, faster). 0 = full history."
+      default: 1
+output_schema:
+  type: object
+  properties:
+    cloned_to:       {type: string, description: "Relative path from workspace root"}
+    repo_full_name:  {type: string}
+    default_branch:  {type: string}
+    commit_sha:      {type: string}
+    file_count:      {type: integer}
+    top_level_dirs:  {type: array, items: {type: string}}
+    error:           {type: string}
+  required: [cloned_to, repo_full_name]
+timeout: 180.0
+retry:
+  max_attempts: 1

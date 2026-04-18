@@ -5,6 +5,11 @@ description: >
   the supplied project context, delegates generation to the contract_writer
   agent, and persists the result as a CDDContract artifact. Frontend and
   backend agents MUST read this artifact before writing any code.
+
+  The contract adapts to the starting-point strategy from RepoDiscovery:
+    clone_existing  → specifies the delta (what to change in the cloned repo)
+    use_boilerplate → specifies which boilerplate plus required customisations
+    from_scratch    → full new-codebase CDD contract (default behaviour)
 version: "1.0.0"
 side_effect_level: mutates-local
 permissions: []
@@ -193,6 +198,34 @@ input_schema:
     additional_notes:
       type: string
       default: "N/A"
+    # ── Starting-point strategy (from RepoDiscovery artifact) ────────────────
+    starting_point_strategy:
+      type: string
+      enum: [clone_existing, use_boilerplate, from_scratch]
+      description: >
+        Strategy chosen by the repo_scout. Determines how the CDD master
+        prompt frames the contract:
+          clone_existing  → contract is a delta: what to change in the cloned repo
+          use_boilerplate → contract specifies the boilerplate + required modifications
+          from_scratch    → full new-codebase contract (default)
+      default: "from_scratch"
+    cloned_repo_url:
+      type: string
+      description: "Original GitHub URL of the cloned repo (clone_existing only)"
+      default: ""
+    cloned_repo_path:
+      type: string
+      description: "Local path of the cloned repo, e.g. built/myapp (clone_existing only)"
+      default: ""
+    boilerplate_id:
+      type: string
+      description: "Boilerplate template id from template_list (use_boilerplate only)"
+      default: ""
+    boilerplate_path:
+      type: string
+      description: "Local path of the cloned boilerplate, e.g. workspace/myapp (use_boilerplate only)"
+      default: ""
+
     # ── Artifact linkage ──────────────────────────────────────────────────────
     source_artifact_ids:
       type: array

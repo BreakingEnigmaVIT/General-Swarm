@@ -39,6 +39,12 @@ contract document. Every section must be complete. Where the user has marked
 a placeholder as N/A, acknowledge it and skip that section cleanly.
 
 =============================================================================
+STARTING POINT CONTEXT  (critical — read before writing a single line)
+=============================================================================
+
+{starting_point_block}
+
+=============================================================================
 PROJECT CONTEXT
 =============================================================================
 
@@ -119,6 +125,16 @@ Using all of the project context above, generate the following ten
 deliverables in order. Each deliverable must be complete and immediately
 usable. Do not truncate any section. Do not say "add more as needed."
 Do not leave any placeholder unfilled.
+
+CRITICAL — your contract must reflect the STARTING POINT CONTEXT above:
+  - If strategy is clone_existing: every deliverable describes DELTA changes
+    to the cloned repo. Deliverable 3 (OpenAPI) covers ONLY the endpoints that
+    differ from the cloned repo. Deliverable 8 covers what the cloned repo
+    already satisfies vs. what must change.
+  - If strategy is use_boilerplate: every deliverable describes what the
+    boilerplate provides out-of-the-box vs. what must be added/changed.
+    Name the boilerplate in Deliverable 1 and reference it throughout.
+  - If strategy is from_scratch: the standard full-codebase contract applies.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 DELIVERABLE 1 — CONTRACT HEADER & EXECUTIVE SUMMARY
@@ -296,9 +312,53 @@ QUALITY RULES — FOLLOW WITHOUT EXCEPTION
 """
 
 
+def _build_starting_point_block(inputs: dict[str, Any]) -> str:
+    strategy = inputs.get("starting_point_strategy", "from_scratch")
+
+    if strategy == "clone_existing":
+        return (
+            f"Strategy          : CLONE EXISTING REPO\n"
+            f"Source Repo URL   : {inputs.get('cloned_repo_url', 'N/A')}\n"
+            f"Local Cloned Path : {inputs.get('cloned_repo_path', 'N/A')}\n\n"
+            "This contract is a DELTA CONTRACT. It specifies only what must change\n"
+            "in the cloned repository to match the user's requirements. Engineers\n"
+            "MUST NOT rewrite files that already satisfy the requirements as-is.\n"
+            "Each deliverable must clearly distinguish:\n"
+            "  [KEEP]   — already exists and is correct in the cloned repo\n"
+            "  [MODIFY] — exists but must be changed\n"
+            "  [ADD]    — does not exist and must be created\n"
+            "  [DELETE] — exists but must be removed"
+        )
+
+    if strategy == "use_boilerplate":
+        return (
+            f"Strategy           : USE BOILERPLATE TEMPLATE\n"
+            f"Boilerplate ID     : {inputs.get('boilerplate_id', 'N/A')}\n"
+            f"Local Boilerplate  : {inputs.get('boilerplate_path', 'N/A')}\n\n"
+            "This contract is a BOILERPLATE ADAPTATION CONTRACT. The named boilerplate\n"
+            "provides the project skeleton. Engineers MUST call template_clone with\n"
+            "the boilerplate_id before writing code. Each deliverable must clearly\n"
+            "distinguish:\n"
+            "  [BOILERPLATE] — provided out-of-the-box by the template (do not touch)\n"
+            "  [CONFIGURE]   — boilerplate param substitution required\n"
+            "  [ADD]         — new code that must be written on top of the boilerplate\n"
+            "  [OVERRIDE]    — boilerplate file that must be replaced entirely"
+        )
+
+    # from_scratch
+    return (
+        "Strategy : FROM SCRATCH\n\n"
+        "No close match was found on GitHub or in the boilerplate library.\n"
+        "This is a full new-codebase contract. Engineers write all code from zero.\n"
+        "No [KEEP], [MODIFY], or [BOILERPLATE] annotations are needed."
+    )
+
+
 def _fill_prompt(inputs: dict[str, Any]) -> str:
     today = date.today().isoformat()
+    starting_point_block = _build_starting_point_block(inputs)
     return _CDD_MASTER_PROMPT.format(
+        starting_point_block=starting_point_block,
         project_name=inputs["project_name"],
         project_description=inputs["project_description"],
         business_domain=inputs.get("business_domain", "Software"),
@@ -330,12 +390,13 @@ def _fill_prompt(inputs: dict[str, Any]) -> str:
         kafka_topics=inputs.get("kafka_topics", "N/A"),
         error_policy=inputs.get(
             "error_policy",
-            "Standard error body: {error, code, details}. 422 for validation, "
-            "404 for not found, 500 for provider fault. No stack traces.",
+            "Standard error body: fields error(string), code(string), details(object|null). "
+            "422 for validation failures (never 500 for bad input), "
+            "404 for not found, 500 for provider fault. No stack traces in responses.",
         ),
         contract_repo_url=inputs.get("contract_repo_url", "N/A"),
         contract_folder_structure=inputs.get(
-            "contract_folder_structure", "contracts/{service_name}/{version}/"
+            "contract_folder_structure", "contracts/<service_name>/<version>/"
         ),
         linting_tool=inputs.get("linting_tool", "STOPLIGHT_SPECTRAL"),
         ci_cd_platform=inputs.get("ci_cd_platform", "GITHUB_ACTIONS"),

@@ -29,6 +29,7 @@ class ArtifactType(str, Enum):
     prd = "PRD"
     architecture_doc = "ArchitectureDoc"
     cdd_contract = "CDDContract"
+    repo_discovery = "RepoDiscovery"
     api_spec = "APISpec"
     db_schema = "DBSchema"
     code_change_set = "CodeChangeSet"
@@ -158,6 +159,34 @@ class APISpec(ArtifactBase):
     base_path: str = "/"
     endpoints: list[APIEndpoint] = Field(default_factory=list)
     openapi_source: str = ""   # path to generated OpenAPI YAML in workspace
+
+
+class RepoDiscovery(ArtifactBase):
+    """
+    Records the starting-point strategy chosen by the repo_scout agent.
+
+    strategy values:
+      clone_existing  — a close GitHub repo was found and cloned
+      use_boilerplate — no close repo; a known boilerplate template was selected
+      from_scratch    — neither option fit; engineers write the full codebase
+    """
+    artifact_type: ArtifactType = ArtifactType.repo_discovery
+    strategy: str = "from_scratch"          # clone_existing | use_boilerplate | from_scratch
+
+    # clone_existing fields
+    source_repo_url:   str = ""             # original GitHub URL
+    source_repo_name:  str = ""             # owner/repo
+    cloned_to:         str = ""             # built/<dir> path
+    commit_sha:        str = ""
+    similarity_score:  float = 0.0
+
+    # use_boilerplate fields
+    boilerplate_id:    str = ""             # template_list id
+    boilerplate_path:  str = ""             # workspace/<dir> path
+
+    # shared
+    rationale:         str = ""             # why this strategy was chosen
+    search_query_used: str = ""             # GitHub query that was run
 
 
 class CDDContract(ArtifactBase):
@@ -401,6 +430,7 @@ ARTIFACT_REGISTRY: dict[str, Type[ArtifactBase]] = {
     ArtifactType.prd.value: PRD,
     ArtifactType.architecture_doc.value: ArchitectureDoc,
     ArtifactType.api_spec.value: APISpec,
+    ArtifactType.repo_discovery.value: RepoDiscovery,
     ArtifactType.cdd_contract.value: CDDContract,
     ArtifactType.db_schema.value: DBSchema,
     ArtifactType.code_change_set.value: CodeChangeSet,

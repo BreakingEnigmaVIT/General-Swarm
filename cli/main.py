@@ -22,9 +22,13 @@ from pathlib import Path
 from typing import Optional
 
 import click
+from dotenv import load_dotenv
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
+
+# Load .env before anything reads os.environ (tools, providers, LLM clients)
+load_dotenv(override=False)
 
 console = Console()
 
