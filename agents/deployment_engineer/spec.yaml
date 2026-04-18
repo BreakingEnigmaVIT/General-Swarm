@@ -28,6 +28,7 @@ temperature: 0.1
 tools:
   - kubernetes_apply
   - docker_compose_deploy
+  - cloud_run_deploy
   - cloudflare_dns
   - env_manager
   - artifact_read

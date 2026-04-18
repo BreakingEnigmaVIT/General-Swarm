@@ -123,5 +123,7 @@ safety:
     - spawn_agent
     - self_reflect
     - human_input
+    - cloud_run_deploy
+    - gcloud_cli
 
 memory_backend: local

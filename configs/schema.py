@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +33,8 @@ SideEffectLevel = Literal["read-only", "mutates-local", "mutates-external"]
 
 
 class ToolSpec(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     name: str
     description: str
     version: str = "1.0.0"
@@ -42,6 +44,8 @@ class ToolSpec(BaseModel):
     output_schema: dict[str, Any] = Field(default_factory=dict)
     timeout: float = 30.0
     retry: RetryPolicy = Field(default_factory=RetryPolicy)
+    prod_risk: bool = Field(default=False, validation_alias=AliasChoices("prod-risk", "prod_risk"))
+    reversal: Optional[str] = None
 
     @staticmethod
     def _sanitize_schema(schema: dict[str, Any]) -> dict[str, Any]:

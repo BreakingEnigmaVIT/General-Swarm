@@ -32,6 +32,7 @@ temperature: 0.2
 tools:
   - artifact_read
   - artifact_write
+  - gcloud_cli
   - mermaid_render
   - filesystem
   - self_reflect

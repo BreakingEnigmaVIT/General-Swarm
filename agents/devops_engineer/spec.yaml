@@ -30,6 +30,7 @@ tools:
   - git_ops
   - github_actions_api
   - docker_build
+  - gcloud_cli
   - filesystem
   - shell_exec
   - artifact_read

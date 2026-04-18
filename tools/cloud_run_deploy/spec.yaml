@@ -1,0 +1,53 @@
+name: cloud_run_deploy
+description: >
+  Deploy a container image to a GCP Cloud Run service.
+  Invokes scripts/deploy_cloud_run.sh with declared parameters.
+  The deploy script is pre-baked and immutable — the agent cannot
+  modify it. Secrets are read from the environment at runtime;
+  the agent never supplies them.
+version: "1.0.0"
+side_effect_level: mutates-external
+prod-risk: true
+permissions: [shell_exec]
+input_schema:
+  type: object
+  properties:
+    image_tag:
+      type: string
+      description: "Full image URI including tag, e.g. gcr.io/project/service:abc123"
+    service_name:
+      type: string
+      description: "Cloud Run service name to deploy or create"
+    region:
+      type: string
+      description: "GCP region, e.g. us-central1"
+    project_id:
+      type: string
+      description: "GCP project ID"
+    environment:
+      type: string
+      enum: [dev, staging, prod]
+      description: "Target environment — gates prod-risk confirmation"
+    dry_run:
+      type: boolean
+      default: true
+      description: "If true, validates inputs and prints what would run without deploying"
+  required: [image_tag, service_name, region, project_id, environment]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    success: {type: boolean}
+    service_url: {}
+    revision: {}
+    stdout: {type: string}
+    stderr: {type: string}
+    dry_run: {type: boolean}
+    script_hash: {type: string}
+timeout: 300.0
+retry:
+  max_attempts: 1
+reversal: >
+  gcloud_cli with command:
+  "gcloud run services update {service_name} --image {previous_image}
+  --region {region} --project {project_id}"

@@ -1,0 +1,44 @@
+name: gcloud_cli
+description: >
+  Execute a single gcloud CLI command and return structured output.
+  Only gcloud commands are permitted — no other shell commands.
+  Write subcommands are gated by side-effect level.
+  The command string is validated against an allowlist before execution.
+version: "1.0.0"
+side_effect_level: read-only
+prod-risk: false
+permissions: [shell_exec]
+input_schema:
+  type: object
+  properties:
+    command:
+      type: string
+      description: >
+        Full gcloud command string starting with 'gcloud'.
+        Example: 'gcloud run services list --region us-central1 --project myproject'
+        The 'gcloud' prefix is required. No shell operators (&&, ||, ;, |, >, <).
+    timeout:
+      type: number
+      default: 30
+      description: "Seconds before the command is killed. Max 120."
+    format:
+      type: string
+      enum: [json, yaml, text, value, default]
+      default: default
+      description: "Append --format flag to the command if not already present."
+  required: [command]
+  additionalProperties: false
+output_schema:
+  type: object
+  properties:
+    success: {type: boolean}
+    stdout: {type: string}
+    stderr: {type: string}
+    returncode: {type: integer}
+    command_run: {type: string}
+timeout: 130.0
+retry:
+  max_attempts: 2
+reversal: >
+  Depends on subcommand. Caller must declare reversal in the wrapping
+  tool or agent spec.
