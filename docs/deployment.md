@@ -132,6 +132,14 @@ defaults.yaml (shipped)
 
 **Kubernetes:** use **KEDA** against `{SWARM_STREAM_PREFIX}:tasks:{role}` and consumer group `workers:{role}` — see **`docs/keda-architecture.md`**.
 
+## Troubleshooting
+
+### `ImportError: cannot import name 'AsyncGroq' from 'groq'`
+
+A **directory named `groq` at the repository root** is imported before the real **PyPI `groq`** package when `PYTHONPATH` includes `/app` (Docker) or the project root (local). The SDK lives under `providers/groq/`, not top-level `groq`.
+
+**Fix:** Delete the stray root folder `groq/` (keep `providers/groq/`). The Docker image runs `rm -rf /app/groq` after copy; rebuild if you still see this. Do not commit a root `groq` package (see `.gitignore`).
+
 ## Observability Backends
 
 Traces are stored as local JSONL files by default. To export to external systems:

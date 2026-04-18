@@ -3,9 +3,50 @@
 from __future__ import annotations
 
 import json
-from typing import Any, AsyncIterator, Optional
+import sys
+from importlib import import_module
+from pathlib import Path
+from typing import Any, AsyncIterator, Optional, Type
 
-from groq import AsyncGroq, RateLimitError as GroqRateLimitError
+import site
+
+
+def _import_vendor_groq() -> Any:
+    """Import the PyPI ``groq`` SDK even when a repo-root ``/app/groq`` package shadows it."""
+    existing = sys.modules.get("groq")
+    if existing is not None and getattr(existing, "AsyncGroq", None) is not None:
+        return existing
+
+    for key in list(sys.modules):
+        if key == "groq" or key.startswith("groq."):
+            sys.modules.pop(key, None)
+
+    site_dirs: list[str] = []
+    for getter in (site.getsitepackages, getattr(site, "getusersitepackages", None)):
+        if not callable(getter):
+            continue
+        try:
+            found = getter()
+        except Exception:
+            continue
+        if isinstance(found, str):
+            found = [found]
+        for d in found or []:
+            if d and Path(d).is_dir() and (Path(d) / "groq" / "__init__.py").is_file():
+                site_dirs.append(d)
+
+    saved = sys.path[:]
+    try:
+        if site_dirs:
+            sys.path = list(dict.fromkeys(site_dirs + saved))
+        return import_module("groq")
+    finally:
+        sys.path[:] = saved
+
+
+_groq_mod = _import_vendor_groq()
+AsyncGroq: Type[Any] = _groq_mod.AsyncGroq
+GroqRateLimitError: Type[BaseException] = _groq_mod.RateLimitError
 from tenacity import (
     retry,
     retry_if_exception_type,

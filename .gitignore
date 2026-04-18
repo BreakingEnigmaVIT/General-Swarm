@@ -1,3 +1,6 @@
+# Never commit a top-level `groq` package — it shadows the PyPI groq SDK on PYTHONPATH=/app.
+/groq
+
 __pycache__/
 *.pyc
 *.pyo

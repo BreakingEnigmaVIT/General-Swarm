@@ -16,6 +16,9 @@ RUN pip install --no-cache-dir -e ".[redis]"
 # Remaining project files (examples, tests, docs, deploy, …)
 COPY . .
 
+# A repo-root `groq/` shadows the PyPI `groq` package when PYTHONPATH=/app (ImportError: AsyncGroq).
+RUN rm -rf /app/groq
+
 # Create runtime directories
 RUN mkdir -p traces memory_store
 
