@@ -27,7 +27,7 @@ system_prompt: |
   - Auth: JWT + refresh tokens
 
   Never hardcode secrets. Reference env vars by name (e.g. DATABASE_URL).
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.2
 tools:
   - artifact_read

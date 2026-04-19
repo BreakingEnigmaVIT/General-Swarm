@@ -206,15 +206,17 @@ def bootstrap_registries(
     agents_dir: str = "./agents",
     groq_api_key: str = "",
     openrouter_api_key: str = "",
-    default_model: str = "llama-3.3-70b-versatile",
+    gemini_api_key: str = "",
+    default_model: str = "gemini-2.5-flash",
 ) -> tuple[ToolRegistry, AgentSpecRegistry, ProviderRegistry]:
     """
     Initialise all three registries from scratch:
     - Autodiscover tools and agent specs from disk
-    - Register Groq and/or OpenRouter providers
+    - Register Groq, OpenRouter, and/or Gemini providers
     """
     from providers.groq.adapter import GroqAdapter
     from providers.openrouter.adapter import OpenRouterAdapter
+    from providers.gemini.adapter import GeminiAdapter
 
     tr = get_tool_registry()
     ar = get_agent_spec_registry()
@@ -230,5 +232,9 @@ def bootstrap_registries(
     if openrouter_api_key:
         openrouter = OpenRouterAdapter(api_key=openrouter_api_key, default_model=default_model)
         pr.register("openrouter", openrouter, overwrite=True)
+
+    if gemini_api_key:
+        gemini = GeminiAdapter(api_key=gemini_api_key, default_model=default_model)
+        pr.register("gemini", gemini, overwrite=True)
 
     return tr, ar, pr

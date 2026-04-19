@@ -21,7 +21,7 @@ system_prompt: |
   5. Deduplicate similar incidents within a 30-minute window to avoid alert fatigue.
 
   Never rollback without human confirmation unless --approve-all is set.
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.1
 tools:
   - prometheus_query

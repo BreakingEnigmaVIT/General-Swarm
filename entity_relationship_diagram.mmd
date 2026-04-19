@@ -1,4 +1,7 @@
 erDiagram
-    USER ||--o{ ADDRESS : "lives at"
-    USER {\n        string name\n        string email\n    }
-    ADDRESS {\n        string street\n        string city\n        string state\n        string zip\n    }
+    users {
+        UUID id PK
+        VARCHAR(255) name
+        TIMESTAMP WITH TIME ZONE created_at
+        TIMESTAMP WITH TIME ZONE updated_at
+    }

@@ -25,9 +25,14 @@ system_prompt: |
                           Read the existing files. Only modify what the
                           CDDContract marks as [MODIFY] or [ADD]. Leave [KEEP]
                           files untouched.
-     - use_boilerplate  → call template_clone with boilerplate_id before writing
-                          any code. Apply [CONFIGURE] params, then add/override
-                          per the CDDContract [ADD] and [OVERRIDE] annotations.
+     - use_boilerplate  → the contractor has already cloned the boilerplate.
+                          Read CDDContract and check the boilerplate_cloned_to
+                          field. If non-empty, the boilerplate is already at
+                          that path — do NOT call template_clone again, just
+                          read the existing files and apply [CONFIGURE] params
+                          and [ADD]/[OVERRIDE] changes per CDDContract.
+                          Only call template_clone yourself if
+                          boilerplate_cloned_to is empty.
      - from_scratch     → scaffold with project_scaffold, then implement fully.
   3. If RepoDiscovery is not available, STOP and notify chief_orchestrator.
 
@@ -65,7 +70,7 @@ system_prompt: |
   - Include GET /health → {"status": "ok"}.
   - Write COMPLETE runnable code — zero TODOs, zero stubs, zero pass placeholders.
 
-model: anthropic/claude-sonnet-4
+model: gemini-2.5-flash
 temperature: 0.2
 tools:
   - filesystem

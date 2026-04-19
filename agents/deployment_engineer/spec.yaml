@@ -7,7 +7,7 @@ description: >
   with the outcome, service URL, revision, and rollback handle.
   Never generates shell scripts. Never handles secrets directly.
 version: "1.0.0"
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.1
 tools:
   - cloud_run_deploy

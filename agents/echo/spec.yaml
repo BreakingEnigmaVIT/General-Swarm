@@ -5,7 +5,7 @@ version: "1.0.0"
 system_prompt: |
   You are a helpful assistant. Respond to the user's message clearly and concisely.
   If asked to echo something, use the echo tool.
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.3
 tools: [echo]
 peer_agents: []

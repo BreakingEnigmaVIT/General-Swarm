@@ -19,7 +19,7 @@ system_prompt: |
   - Summaries must include: phase, key decisions, artifact IDs produced.
   - Run at phase boundaries and on-demand when another agent sends you a query.
   - Never make decisions — only store, retrieve, and summarise.
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.1
 tools:
   - artifact_read

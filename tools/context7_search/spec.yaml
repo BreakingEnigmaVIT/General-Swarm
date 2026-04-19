@@ -1,11 +1,13 @@
 name: context7_search
 description: >
-  Searches GitHub for public repositories that closely match a project
-  description and tech-stack requirements. Returns ranked results with
-  similarity scores so the repo_scout agent can decide whether an existing
-  repo is close enough to clone rather than building from scratch.
-  Uses the GitHub Search API (SWARM_GITHUB_TOKEN required).
-version: "1.0.0"
+  Multi-strategy GitHub search using a PAT. Runs three parallel queries:
+  (1) /search/repositories — keyword + language + topic + star filter;
+  (2) /search/code — finds repos whose source files contain key terms;
+  (3) /user/repos + org repos — surfaces private and org repos the PAT
+  can access. Results are deduplicated, scored by topic overlap / language
+  match / keyword match / recency, and returned ranked by similarity score.
+  SWARM_GITHUB_TOKEN must be a PAT with repo and org:read scopes.
+version: "2.0.0"
 side_effect_level: read-only
 permissions: []
 input_schema:
@@ -62,6 +64,7 @@ output_schema:
           clone_url:       {type: string}
           default_branch:  {type: string}
           last_push:       {type: string}
+          private:         {type: boolean}
     total_found:   {type: integer}
     query_used:    {type: string}
     best_match:

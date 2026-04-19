@@ -14,7 +14,7 @@ system_prompt: |
 
   You must be objective. Do not favor any particular agent's style.
   Focus on which answer best addresses the original goal.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.2
 tools: [write_blackboard]
 peer_agents: []

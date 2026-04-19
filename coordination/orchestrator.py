@@ -98,6 +98,8 @@ class SwarmRuntime:
         self._deployment_mode = deployment_mode
         self._redis_url = redis_url
         self._deploy = deploy
+        self._stop_after_phase: Optional[str] = None
+        self._resume_from_phase: Optional[str] = None
 
         # Wire runtime-injectable tools
         self._wire_tools()
@@ -120,7 +122,7 @@ class SwarmRuntime:
         _reflect_model = (
             (self.topology.agents[0].model_override if self.topology.agents else None)
             or next((s.model for s in self._agent_specs.values() if s.model), None)
-            or "llama-3.3-70b-versatile"
+            or "gemini-2.5-flash"
         )
         sr.set_provider(self._provider, _reflect_model)
         sa.set_factory(self._spawn_agent_for_goal)
@@ -133,7 +135,7 @@ class SwarmRuntime:
             _fallback_model = (
                 (self.topology.agents[0].model_override if self.topology.agents else None)
                 or next((s.model for s in self._agent_specs.values() if s.model), None)
-                or "llama-3.3-70b-versatile"
+                or "gemini-2.5-flash"
             )
             from configs.schema import AgentSpec as AS
             spec = AS(
@@ -171,11 +173,14 @@ class SwarmRuntime:
             agent_id=agent_id,
         )
 
-    async def _spawn_agent_for_goal(self, role: str, goal: str) -> TaskResult:
+    async def _spawn_agent_for_goal(
+        self, role: str, goal: str, *, timeout: float = 300.0, max_iterations: int = 20
+    ) -> TaskResult:
         agent = self._make_agent(role)
         task = Task(goal=goal, constraints=TaskConstraints(
             budget=self.topology.budget.max_cost_usd,
-            max_iterations=20,
+            timeout=timeout,
+            max_iterations=max_iterations,
         ))
         return await agent.run_task(task, trace_id=self.trace_id)
 
@@ -316,6 +321,13 @@ class SwarmRuntime:
                 if total_budget else None
             )
 
+            # ── Skip phases before resume point ───────────────────────────────
+            if self._resume_from_phase:
+                if phase_id != self._resume_from_phase:
+                    current_phase_idx += 1
+                    continue
+                self._resume_from_phase = None  # reached target, start running
+
             # ── Emit phase_start span ─────────────────────────────────────────
             with Span(tracer, f"phase.{phase_id}", "phase_start",
                       agent_id="chief_orchestrator") as span:
@@ -432,6 +444,21 @@ class SwarmRuntime:
                           agent_id="chief_orchestrator") as span:
                     span.set(phase_id=phase_id)
 
+            # ── Pause after phase if requested (feedback loop) ────────────────
+            if self._stop_after_phase and phase_id == self._stop_after_phase:
+                return TaskResult(
+                    output=f"Paused after '{phase_id}' phase. Ready for feedback.",
+                    success=True,
+                    cost=self._ledger.total_cost,
+                    token_usage=total_usage,
+                    iterations=len(all_results),
+                    metadata={
+                        "lifecycle": lifecycle_name,
+                        "phases": phase_summaries,
+                        "paused_after": phase_id,
+                    },
+                )
+
             current_phase_idx += 1
 
         # ── Final aggregation ─────────────────────────────────────────────────
@@ -458,7 +485,11 @@ class SwarmRuntime:
                 log.debug("phase_agent_skipped", role=role, reason="not_in_topology")
                 continue
             try:
-                result = await self._spawn_agent_for_goal(role, phase_task.goal)
+                result = await self._spawn_agent_for_goal(
+                    role, phase_task.goal,
+                    timeout=phase_task.constraints.timeout,
+                    max_iterations=phase_task.constraints.max_iterations,
+                )
                 results.append(result)
             except Exception as exc:
                 log.error("phase_agent_error", role=role, error=str(exc))
@@ -476,12 +507,12 @@ class SwarmRuntime:
                 {"role": "user", "content": goal},
             ],
             model=self._agent_specs.get("orchestrator", next(iter(self._agent_specs.values()))).model
-            if self._agent_specs else "llama-3.3-70b-versatile",
+            if self._agent_specs else "gemini-2.5-flash",
             temperature=0.2,
         )
 
         if self._ledger:
-            self._ledger.record("orchestrator", "llama-3.3-70b-versatile",
+            self._ledger.record("orchestrator", "gemini-2.5-flash",
                                 result.usage, root_task.id)
 
         raw = (result.content or "{}").strip()

@@ -467,11 +467,41 @@ class ContractorHandler(ToolHandler):
         )
         ci_pipeline_yaml = _extract_yaml_block(document, "DELIVERABLE 9")
 
-        # Persist as a CDDContract artifact
         from memory.artifacts import get_artifact_registry
         from memory.artifact_schemas.base import CDDContract, ArtifactType
 
         reg = get_artifact_registry()
+
+        # ── Clone boilerplate now so build engineers find it ready ───────────
+        boilerplate_cloned_to = ""
+        if inputs.get("starting_point_strategy") == "use_boilerplate":
+            boilerplate_id = (inputs.get("boilerplate_id") or "").strip()
+            existing_path = (inputs.get("boilerplate_path") or "").strip()
+            if boilerplate_id and not existing_path:
+                from tools.template_clone.handler import TemplateCloneHandler
+                from observability.logutil import get_logger as _get_log
+                _log = _get_log("contractor")
+                try:
+                    clone_result = await TemplateCloneHandler()._run({
+                        "template_id": boilerplate_id,
+                        "target_dir": boilerplate_id,
+                        "params": inputs.get("boilerplate_params") or {},
+                    })
+                    if clone_result.get("error"):
+                        _log.warning("boilerplate_clone_failed",
+                                     boilerplate_id=boilerplate_id,
+                                     error=clone_result["error"])
+                    else:
+                        boilerplate_cloned_to = clone_result.get("cloned_to", "")
+                        _log.info("boilerplate_cloned",
+                                  boilerplate_id=boilerplate_id,
+                                  cloned_to=boilerplate_cloned_to)
+                except Exception as exc:
+                    _log.warning("boilerplate_clone_error",
+                                 boilerplate_id=boilerplate_id, error=str(exc))
+            elif existing_path:
+                boilerplate_cloned_to = existing_path
+
         artifact = CDDContract(
             artifact_type=ArtifactType.cdd_contract,
             project_name=inputs["project_name"],
@@ -485,6 +515,7 @@ class ContractorHandler(ToolHandler):
             openapi_yaml=openapi_yaml,
             asyncapi_yaml=asyncapi_yaml,
             ci_pipeline_yaml=ci_pipeline_yaml,
+            boilerplate_cloned_to=boilerplate_cloned_to,
             stage_id=inputs.get("stage_id", "contracting"),
             lineage=inputs.get("source_artifact_ids", []),
         )
@@ -497,6 +528,7 @@ class ContractorHandler(ToolHandler):
             "artifact_type": "CDDContract",
             "status": artifact.status if isinstance(artifact.status, str) else artifact.status.value,
             "contract_version": inputs.get("contract_version", "1.0.0"),
+            "boilerplate_cloned_to": boilerplate_cloned_to,
         }
 
     async def self_test(self) -> bool:

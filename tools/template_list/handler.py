@@ -81,14 +81,22 @@ class TemplateListHandler(ToolHandler):
                 repos = []
 
             boilerplate = [
-                r for r in repos if isinstance(r, dict) and str(r.get("name", "")).startswith("boilerplate-")
+                r for r in repos if isinstance(r, dict) and (
+                    str(r.get("name", "")).startswith("boilerplate-")
+                    or str(r.get("name", "")).startswith("boilerplate_")
+                )
             ]
 
             entries: list[dict[str, Any]] = []
             for repo in boilerplate:
                 name = str(repo.get("name", ""))
                 html_url = str(repo.get("html_url", ""))
-                tpl_id = name[len("boilerplate-") :] if name.startswith("boilerplate-") else name
+                if name.startswith("boilerplate-"):
+                    tpl_id = name[len("boilerplate-"):]
+                elif name.startswith("boilerplate_"):
+                    tpl_id = name[len("boilerplate_"):]
+                else:
+                    tpl_id = name
                 raw_url = f"https://raw.githubusercontent.com/{org}/{name}/main/template.json"
 
                 raw = await client.get(raw_url, headers=headers)

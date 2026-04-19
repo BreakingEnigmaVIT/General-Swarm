@@ -21,7 +21,7 @@ system_prompt: |
   - PII redaction runs BEFORE any other processing.
   - Evidence quotes must be redacted — no real names or email addresses.
   - Never store raw feedback in artifacts — only anonymised summaries and quotes.
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.3
 tools:
   - intercom_query

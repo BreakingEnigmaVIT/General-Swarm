@@ -23,7 +23,7 @@ system_prompt: |
 
   Quality gate: A PRD with zero acceptance criteria for "must" requirements is invalid.
   Self-reflect before writing the final artifact.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.3
 tools:
   - artifact_read

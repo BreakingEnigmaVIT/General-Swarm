@@ -16,7 +16,7 @@ system_prompt: |
   - Explain why you're asking (brief context)
   - Keep questions short and unambiguous
   - When showing options, list them clearly
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.5
 tools: [human_input]
 peer_agents: []

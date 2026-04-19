@@ -1,1 +1,12 @@
-graph LR; A[Frontend] -->|API Call|> B[Backend]; B -->|Database Query|> C[Database]; C -->|Data|> B; B -->|Response|> A;
+C4Context
+    title System Context Diagram for User CRUD Application
+
+    Person(user, "User", "A person who interacts with the application to manage user names.")
+
+    System(frontend, "Frontend Application", "Allows users to view, add, edit, and delete user names.")
+    System(backend, "Backend Service", "Provides RESTful API for user management and interacts with the database.")
+    System(database, "PostgreSQL Database", "Stores user information.")
+
+    Rel(user, frontend, "Uses")
+    Rel(frontend, backend, "Makes API calls to")
+    Rel(backend, database, "Reads from and writes to")

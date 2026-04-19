@@ -20,7 +20,7 @@ import asyncio
 import json
 import sys
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 import click
 from dotenv import load_dotenv
@@ -77,6 +77,7 @@ def _bootstrap(cfg: "SwarmConfig") -> tuple:  # type: ignore[name-defined]
         agents_dir=cfg.agents_dir,
         groq_api_key=cfg.groq_api_key,
         openrouter_api_key=cfg.openrouter_api_key,
+        gemini_api_key=cfg.gemini_api_key,
         default_model=cfg.default_model,
     )
     return tr, ar, pr
@@ -111,7 +112,7 @@ def _build_runtime(cfg, topology_path: Optional[str], deploy: bool = True):
 
     agent_specs = {name: spec for name, spec in ar.items()}
     tool_handlers = {name: handler for name, handler in tr.items()}
-    provider = pr.get_or_default(cfg.provider or "groq")
+    provider = pr.get_or_default(cfg.provider or "gemini")
 
     runtime = SwarmRuntime(
         topology=topology,
@@ -180,7 +181,7 @@ def run(
     cfg = _load_config(api_key, model, log_level, trace_dir, safety_mode, provider, openrouter_api_key)
     _setup_logging(cfg)
 
-    active_provider = cfg.provider or "groq"
+    active_provider = cfg.provider or "gemini"
     if active_provider == "openrouter" and not cfg.openrouter_api_key:
         console.print("[bold red]Error:[/bold red] OPENROUTER_API_KEY is not set.")
         console.print("  Set it in .env or pass --openrouter-api-key")
@@ -496,7 +497,7 @@ def dashboard(
         f"[bold cyan]Swarm Dashboard[/bold cyan]\n"
         f"API:  http://{host}:{port}\n"
         f"Docs: http://{host}:{port}/docs\n"
-        f"Provider: {cfg.provider or 'groq'}",
+        f"Provider: {cfg.provider or 'gemini'}",
         border_style="cyan",
     ))
 
@@ -782,12 +783,91 @@ def _write_phase_gate_decision(
 
 # ── Workforce run ─────────────────────────────────────────────────────────────
 
+def _run_feedback_loop(runtime: Any, cons: Console) -> None:
+    """Prompt the user for bug reports / change requests and apply fixes via debug_agent."""
+    cons.print(Panel(
+        "[bold]Review the output in the [cyan]built/[/cyan] directory.[/bold]\n"
+        "Describe any bugs or requested changes below, one round at a time.\n"
+        "Type [bold cyan]done[/bold cyan] (or press Enter with no text) when satisfied.",
+        title="[bold cyan]Feedback Loop[/bold cyan]",
+        border_style="cyan",
+    ))
+    while True:
+        try:
+            feedback = click.prompt(
+                "\nFeedback",
+                default="done",
+                show_default=False,
+                prompt_suffix=" (or 'done' to finish) > ",
+            )
+        except (click.exceptions.Abort, EOFError):
+            break
+        if not feedback or feedback.strip().lower() in ("done", "exit", "quit"):
+            cons.print("[dim]Exiting feedback loop.[/dim]")
+            break
+        fix_goal = (
+            "USER FEEDBACK — apply these fixes to the project in the built/ directory:\n\n"
+            f"{feedback}\n\n"
+            "Steps:\n"
+            "1. List built/ to identify the frontend and backend directories.\n"
+            "2. Read the relevant source files to understand the current implementation.\n"
+            "3. Fix every reported issue in a single pass — do not stop after the first fix.\n"
+            "4. Verify each changed Python file: shell_exec 'python -m py_compile <file>'\n"
+            "5. Verify TypeScript: shell_exec 'cd built/<frontend_dir> && npx tsc --noEmit'\n"
+            "6. Fix any compile errors that appear.\n"
+            "7. Output one line per changed file as your final summary."
+        )
+        cons.print("[dim]Applying fixes…[/dim]")
+        fix_result = asyncio.run(runtime._spawn_agent_for_goal(
+            "debug_agent", fix_goal, timeout=86400.0, max_iterations=100
+        ))
+        border = "green" if fix_result.success else "red"
+        title = (
+            "[bold green]✓ Fixes Applied[/bold green]"
+            if fix_result.success
+            else "[bold red]✗ Fix Failed[/bold red]"
+        )
+        cons.print(Panel(
+            str(fix_result.output or fix_result.error or "No output."),
+            title=title,
+            border_style=border,
+        ))
+
+
+def _print_workforce_result(result: Any, cons: Console) -> None:
+    """Render the phase summary panel for a workforce result."""
+    border = "green" if result.success else "red"
+    status = "✓ Workforce Complete" if result.success else "✗ Workforce Failed"
+    paused = (result.metadata or {}).get("paused_after")
+    if paused:
+        status = f"⏸  Paused after '{paused}' phase"
+        border = "yellow"
+    cons.print(Panel(
+        str(result.output or result.error or "No output"),
+        title=f"[bold]{status}[/bold]",
+        border_style=border,
+    ))
+    phases = (result.metadata or {}).get("phases", [])
+    if phases:
+        t = Table(title="Phase Summary")
+        for col in ("Phase", "Success", "Outputs Missing"):
+            t.add_column(col)
+        for ph in phases:
+            t.add_row(
+                ph["phase_id"],
+                "[green]✓[/green]" if ph["success"] else "[red]✗[/red]",
+                ", ".join(ph.get("output_missing", [])) or "—",
+            )
+        cons.print(t)
+
+
 @cli.command("workforce")
 @click.argument("topology")
 @click.option("--goal", "-g", required=True, help="Product goal for the workforce")
-@click.option("--provider", "-p", default=None, type=click.Choice(["groq", "openrouter"]), help="LLM provider to use")
+@click.option("--provider", "-p", default=None, type=click.Choice(["groq", "openrouter", "gemini"]), help="LLM provider to use")
 @click.option("--api-key", envvar="GROQ_API_KEY", default=None)
 @click.option("--openrouter-api-key", envvar="OPENROUTER_API_KEY", default=None, help="OpenRouter API key")
+@click.option("--gemini-api-key", envvar="GEMINI_API_KEY", default=None, help="Google Gemini API key")
 @click.option("--model", "-m", default=None)
 @click.option("--log-level", default="INFO", show_default=True)
 @click.option("--trace-dir", default="./traces", show_default=True)
@@ -803,6 +883,7 @@ def workforce(
     provider: Optional[str],
     api_key: Optional[str],
     openrouter_api_key: Optional[str],
+    gemini_api_key: Optional[str],
     model: Optional[str],
     log_level: str,
     trace_dir: str,
@@ -823,15 +904,20 @@ def workforce(
     """
     safety_mode = "auto" if approve_all else "interactive"
     cfg = _load_config(api_key, model, log_level, trace_dir, safety_mode, provider, openrouter_api_key)
+    if gemini_api_key:
+        cfg.gemini_api_key = gemini_api_key
     cfg.memory_dir = memory_dir
     _setup_logging(cfg)
 
-    active_provider = cfg.provider or "groq"
+    active_provider = cfg.provider or "gemini"
     if active_provider == "openrouter" and not cfg.openrouter_api_key:
         console.print("[bold red]Error:[/bold red] OPENROUTER_API_KEY is not set.")
         sys.exit(1)
     if active_provider == "groq" and not cfg.groq_api_key:
         console.print("[bold red]Error:[/bold red] GROQ_API_KEY is not set.")
+        sys.exit(1)
+    if active_provider == "gemini" and not cfg.gemini_api_key:
+        console.print("[bold red]Error:[/bold red] GEMINI_API_KEY is not set.")
         sys.exit(1)
 
     _bootstrap(cfg)
@@ -869,7 +955,12 @@ def workforce(
         border_style="magenta",
     ))
 
+    # With --deploy, pause after build so the user can review before deployment
+    if deploy:
+        runtime._stop_after_phase = "build"
+
     result = asyncio.run(runtime.run(goal))
+    paused_after = (result.metadata or {}).get("paused_after")
 
     if output_json:
         click.echo(json.dumps({
@@ -878,42 +969,132 @@ def workforce(
             "success": result.success,
             "cost_usd": result.cost,
             "tokens": result.token_usage.total_tokens,
-            "phases": result.metadata.get("phases", []),
+            "phases": (result.metadata or {}).get("phases", []),
+            "paused_after": paused_after,
             "error": result.error,
         }, indent=2, default=str))
         return
 
-    border = "green" if result.success else "red"
-    status = "✓ Workforce Complete" if result.success else "✗ Workforce Failed"
-    console.print(Panel(
-        str(result.output or result.error or "No output"),
-        title=f"[bold]{status}[/bold]",
-        border_style=border,
-    ))
-
-    phases = result.metadata.get("phases", [])
-    if phases:
-        t = Table(title="Phase Summary")
-        for col in ("Phase", "Success", "Outputs Missing"):
-            t.add_column(col)
-        for ph in phases:
-            t.add_row(
-                ph["phase_id"],
-                "[green]✓[/green]" if ph["success"] else "[red]✗[/red]",
-                ", ".join(ph.get("output_missing", [])) or "—",
-            )
-        console.print(t)
-
+    _print_workforce_result(result, console)
     console.print(
         f"[dim]Cost: ${result.cost:.4f}  |  "
         f"Tokens: {result.token_usage.total_tokens}  |  "
         f"Trace: {runtime.trace_id[:8]}[/dim]"
     )
 
+    # ── Feedback loop ─────────────────────────────────────────────────────────
+    if result.success:
+        _run_feedback_loop(runtime, console)
+
+        # With --deploy: continue the remaining lifecycle phases after feedback
+        if paused_after == "build":
+            runtime._stop_after_phase = None
+            runtime._resume_from_phase = "live_test"
+            console.print(Panel(
+                "[dim]Continuing lifecycle (live_test → quality → deployment → post_launch → iteration)…[/dim]",
+                border_style="magenta",
+            ))
+            result = asyncio.run(runtime.run(goal))
+            _print_workforce_result(result, console)
+            console.print(
+                f"[dim]Cost: ${result.cost:.4f}  |  "
+                f"Tokens: {result.token_usage.total_tokens}  |  "
+                f"Trace: {runtime.trace_id[:8]}[/dim]"
+            )
+
     console.print(
         "\n[dim]Inspect artifacts:[/dim]  swarm artifact list\n"
         "[dim]Show artifact:[/dim]     swarm artifact show <id>"
     )
+
+
+# ── obs ───────────────────────────────────────────────────────────────────────
+
+@cli.command("obs")
+@click.option("--port", default=8501, type=int, show_default=True, help="Streamlit server port")
+@click.option("--topology", default=None, envvar="SWARM_OBS_TOPOLOGY",
+              help="Optional topology YAML path")
+@click.option("--provider", "-p", default=None, envvar="SWARM_OBS_PROVIDER",
+              type=click.Choice(["groq", "openrouter", "gemini"]),
+              help="LLM provider override")
+@click.option("--api-key", envvar="GROQ_API_KEY", default=None)
+@click.option("--openrouter-api-key", envvar="OPENROUTER_API_KEY", default=None)
+@click.option("--gemini-api-key", envvar="GEMINI_API_KEY", default=None)
+@click.option("--model", "-m", default=None, envvar="SWARM_OBS_MODEL",
+              help="Model override")
+@click.option("--trace-dir", default="./traces", show_default=True, envvar="SWARM_OBS_TRACE_DIR")
+@click.option("--browser/--no-browser", default=True, show_default=True,
+              help="Auto-open the browser tab")
+def obs(
+    port: int,
+    topology: Optional[str],
+    provider: Optional[str],
+    api_key: Optional[str],
+    openrouter_api_key: Optional[str],
+    gemini_api_key: Optional[str],
+    model: Optional[str],
+    trace_dir: str,
+    browser: bool,
+) -> None:
+    """Start the live Streamlit observer UI.
+
+    Lets you provide a goal, watch every tool call and LLM span in real time,
+    and inspect the full hierarchical trace — all in a browser tab.
+
+    \b
+    Example:
+      swarm obs
+      swarm obs --port 8502 --provider gemini --no-browser
+    """
+    try:
+        import streamlit  # noqa: F401
+    except ImportError:
+        console.print(
+            "[bold red]streamlit is not installed.[/bold red]\n"
+            "  Install it with:  [cyan]pip install streamlit pandas[/cyan]"
+        )
+        sys.exit(1)
+
+    import subprocess
+    import os as _os
+
+    app_path = Path(__file__).resolve().parent.parent / "obs" / "app.py"
+    if not app_path.exists():
+        console.print(f"[red]Observer app not found at {app_path}[/red]")
+        sys.exit(1)
+
+    env = _os.environ.copy()
+    if topology:
+        env["SWARM_OBS_TOPOLOGY"] = topology
+    if provider:
+        env["SWARM_OBS_PROVIDER"] = provider
+    if api_key:
+        env["GROQ_API_KEY"] = api_key
+    if openrouter_api_key:
+        env["OPENROUTER_API_KEY"] = openrouter_api_key
+    if gemini_api_key:
+        env["GEMINI_API_KEY"] = gemini_api_key
+    if model:
+        env["SWARM_OBS_MODEL"] = model
+    env["SWARM_OBS_TRACE_DIR"] = trace_dir
+
+    console.print(Panel(
+        f"[bold cyan]Swarm Observer[/bold cyan]\n"
+        f"URL:       http://localhost:{port}\n"
+        f"Trace dir: {trace_dir}\n"
+        f"Provider:  {provider or '(from .env)'}",
+        title="[bold]Observer[/bold]",
+        border_style="cyan",
+    ))
+
+    cmd = [
+        sys.executable, "-m", "streamlit", "run", str(app_path),
+        "--server.port", str(port),
+        "--server.headless", "false" if browser else "true",
+        "--browser.gatherUsageStats", "false",
+        "--theme.base", "dark",
+    ]
+    subprocess.run(cmd, env=env, cwd=str(app_path.parent.parent))
 
 
 if __name__ == "__main__":

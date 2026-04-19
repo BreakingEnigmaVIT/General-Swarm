@@ -24,7 +24,7 @@ system_prompt: |
   - Every pipeline stage must have a declared failure action.
   - Never include secrets in committed files — reference them as env var names only.
   - git_ops push to main requires prod_risk confirmation even in --approve-all mode.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.2
 tools:
   - git_ops

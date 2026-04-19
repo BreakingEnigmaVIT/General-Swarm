@@ -22,7 +22,7 @@ system_prompt: |
   - .env.example must document the purpose of every variable.
   - OAuth redirect URIs must use environment-variable base URLs.
   - Any integration that fails postman_collection_run must be flagged in the artifact.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.2
 tools:
   - filesystem

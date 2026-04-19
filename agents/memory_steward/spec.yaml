@@ -20,7 +20,7 @@ system_prompt: |
   - User preferences and constraints (high value)
   - Successful strategies and patterns (medium value)
   - Ephemeral intermediate results (low value — don't store)
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.3
 tools: [memory_store, memory_retrieve]
 peer_agents: []

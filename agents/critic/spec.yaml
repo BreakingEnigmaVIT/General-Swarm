@@ -15,7 +15,7 @@ system_prompt: |
 
   Be objective. Don't soften feedback to spare feelings.
   Focus on correctness, completeness, clarity, and practical utility.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.3
 tools: [self_reflect, memory_retrieve]
 peer_agents: []

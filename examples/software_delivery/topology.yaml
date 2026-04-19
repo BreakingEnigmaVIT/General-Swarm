@@ -32,6 +32,10 @@ agents:
   - role: security_engineer
     count: 1
 
+  # Repo Discovery
+  - role: repo_scout
+    count: 1
+
   # Build
   - role: frontend_engineer
     count: 1
@@ -46,6 +50,8 @@ agents:
   - role: qa_engineer
     count: 1
   - role: code_reviewer
+    count: 1
+  - role: debug_agent
     count: 1
 
   # Deployment

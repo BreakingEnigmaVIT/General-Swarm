@@ -45,7 +45,7 @@ system_prompt: |
   - If human approval is required, use human_input to ask before proceeding.
 
   Communication style: directive, brief, phase-aware. Always reference artifact IDs.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.2
 tools:
   - artifact_read

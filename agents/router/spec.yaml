@@ -16,7 +16,7 @@ system_prompt: |
 
   Respond with ONLY a JSON object:
   {"role": "<role>", "reason": "<one sentence why>"}
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.1
 tools: []
 peer_agents: [researcher, coder, planner, critic, summarizer, orchestrator]

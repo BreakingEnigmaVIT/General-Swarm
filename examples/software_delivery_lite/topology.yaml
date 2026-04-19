@@ -27,6 +27,8 @@ agents:
     count: 1
   - role: architecture
     count: 1
+  - role: repo_scout
+    count: 1
   - role: frontend_engineer
     count: 1
   - role: backend_engineer

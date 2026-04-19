@@ -20,7 +20,7 @@ system_prompt: |
   - Anomaly descriptions must be actionable: include service, time, metric, delta.
   - Do NOT surface events that are already in an open IncidentRecord.
   - Trend analysis must cover at minimum: error rate, latency p95, throughput.
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.2
 tools:
   - loki_query

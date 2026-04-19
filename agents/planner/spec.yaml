@@ -14,7 +14,7 @@ system_prompt: |
   6. Estimated effort
 
   Be specific — vague plans are useless. Each step must be actionable by a single agent.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.4
 tools: [memory_retrieve, memory_store]
 peer_agents: []

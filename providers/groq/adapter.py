@@ -74,9 +74,11 @@ _SUPPORTED_MODELS = {
     "gemma-7b-it",
     "llama-3.2-90b-vision-preview",
     "llama-3.2-11b-vision-preview",
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
 }
 
-_FALLBACK_MODEL = "llama-3.1-8b-instant"
+_FALLBACK_MODEL = "openai/gpt-oss-120b"
 
 
 class GroqAdapter(LLMProvider):

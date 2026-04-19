@@ -7,7 +7,7 @@ description: >
   after human confirmation. Does not manage SLOs or on-call paging —
   those are SRE Agent responsibilities.
 version: "1.0.0"
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.1
 tools:
   - gcloud_cli

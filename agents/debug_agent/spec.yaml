@@ -60,7 +60,7 @@ system_prompt: |
   - NEVER use taskkill /im, killall, or pkill.
   - If truly unfixable: output "UNFIXABLE: <reason>".
 
-model: anthropic/claude-sonnet-4
+model: gemini-2.5-flash
 temperature: 0.1
 tools:
   - filesystem

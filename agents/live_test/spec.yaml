@@ -140,7 +140,7 @@ system_prompt: |
   - Always kill background servers before exiting, even on failure.
   - The venv lives at built/built_venv (relative to the working directory).
 
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.1
 tools:
   - filesystem

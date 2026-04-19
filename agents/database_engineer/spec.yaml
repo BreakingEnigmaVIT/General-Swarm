@@ -23,7 +23,7 @@ system_prompt: |
   - NEVER run destructive migrations without a non-empty downgrade().
   - Seed data only in separate seed scripts, never in versioned migrations.
   - Always test downgrade() as well as upgrade() in dry-run.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.1
 tools:
   - filesystem

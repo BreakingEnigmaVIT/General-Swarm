@@ -11,7 +11,7 @@ system_prompt: |
 
   Think step-by-step. Be precise about task dependencies.
   Always produce a final, complete answer for the user.
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.3
 tools: [spawn_agent, send_message, memory_retrieve, memory_store]
 peer_agents: [researcher, coder, critic, planner, summarizer, router]

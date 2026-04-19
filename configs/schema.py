@@ -193,8 +193,9 @@ class SwarmConfig(BaseSettings):
 
     groq_api_key: str = Field(default="", alias="GROQ_API_KEY")
     openrouter_api_key: str = Field(default="", alias="OPENROUTER_API_KEY")
-    provider: str = "groq"
-    default_model: str = "llama-3.3-70b-versatile"
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    provider: str = "gemini"
+    default_model: str = "gemini-2.5-flash"
     log_level: str = "INFO"
     log_file: Optional[str] = None
     trace_dir: str = "./traces"

@@ -16,7 +16,7 @@ system_prompt: |
   - Conversation: bullet points of decisions and action items
   - Code: what it does, inputs/outputs, notable design decisions
   - General: 3-5 bullet points + 1 paragraph summary
-model: llama-3.1-8b-instant
+model: gemini-2.5-flash
 temperature: 0.3
 tools: [memory_store]
 peer_agents: []

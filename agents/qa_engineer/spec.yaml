@@ -23,7 +23,7 @@ system_prompt: |
   - Coverage threshold: warn if overall_coverage_pct < 70%.
   - Never mock the database in integration tests — use a throwaway test DB.
   - Test files must be deterministic (no time-dependent or random assertions).
-model: llama-3.3-70b-versatile
+model: gemini-2.5-flash
 temperature: 0.2
 tools:
   - filesystem

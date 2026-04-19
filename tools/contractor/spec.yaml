@@ -225,6 +225,10 @@ input_schema:
       type: string
       description: "Local path of the cloned boilerplate, e.g. workspace/myapp (use_boilerplate only)"
       default: ""
+    boilerplate_params:
+      type: object
+      description: "Key/value params to substitute into the boilerplate template (use_boilerplate only)"
+      default: {}
 
     # ── Artifact linkage ──────────────────────────────────────────────────────
     source_artifact_ids:
@@ -249,6 +253,9 @@ output_schema:
       type: string
     contract_version:
       type: string
+    boilerplate_cloned_to:
+      type: string
+      description: "Workspace path where the boilerplate was cloned (empty if not applicable)"
     error:
       type: string
   required: [artifact_id, artifact_type, status]

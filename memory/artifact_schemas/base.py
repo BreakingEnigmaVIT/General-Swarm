@@ -203,6 +203,7 @@ class CDDContract(ArtifactBase):
     openapi_yaml: str = ""                  # Extracted OpenAPI 3.x YAML (Deliverable 3)
     asyncapi_yaml: str = ""                 # Extracted AsyncAPI YAML if broker != N/A
     ci_pipeline_yaml: str = ""             # Extracted CI/CD pipeline YAML (Deliverable 9)
+    boilerplate_cloned_to: str = ""         # Workspace path where boilerplate was cloned by contractor
 
 
 class EntityField(BaseModel):
